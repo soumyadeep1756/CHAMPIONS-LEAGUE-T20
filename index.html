@@ -344,4 +344,27 @@
                 return;
             }
 
-            matches = matches.filter(x => x.id !== m.
+            matches = matches.filter(x => x.id !== m.id); 
+            matches.push(m);
+            
+            document.querySelectorAll('input').forEach(i => i.value = '');
+            
+            calculateStandings();
+            currentTeamFilter = null; 
+            renderMatches();
+            switchTab('standings');
+        }
+
+        function deleteMatch(id) {
+            if(confirm(`Are you sure you want to delete Match ${id}?`)) {
+                matches = matches.filter(m => m.id !== id);
+                calculateStandings();
+                renderMatches();
+            }
+        }
+
+        calculateStandings();
+        renderMatches();
+    </script>
+</body>
+</html>
