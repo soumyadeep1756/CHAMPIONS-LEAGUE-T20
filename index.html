@@ -26,7 +26,6 @@
 </head>
 <body class="pb-10">
 
-    <!-- Welcome Banner -->
     <div id="welcomeBanner" class="w-full bg-blue-600/80 text-white text-center py-2 px-4 flex justify-between items-center glass">
         <span class="text-sm md:text-base font-semibold mx-auto">Welcome to Champions League T20 site.</span>
         <button onclick="document.getElementById('welcomeBanner').classList.add('hide')" class="text-white hover:text-gray-300">
@@ -34,7 +33,6 @@
         </button>
     </div>
 
-    <!-- Navigation -->
     <nav class="w-full p-4 glass sticky top-0 z-50 flex justify-between items-center">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-yellow-400 to-yellow-600 flex items-center justify-center shadow-lg">
@@ -54,7 +52,6 @@
 
     <div class="max-w-4xl mx-auto mt-6 px-4">
         
-        <!-- Tabs -->
         <div class="flex gap-4 mb-6">
             <button onclick="switchTab('standings')" id="tab-standings" class="flex-1 py-3 glass rounded-xl font-bold text-center bg-blue-600/30 border-blue-400 transition-all">
                 <i class="fas fa-list-ol mr-2"></i> Standings
@@ -64,7 +61,6 @@
             </button>
         </div>
 
-        <!-- Standings View -->
         <div id="view-standings" class="glass rounded-2xl p-4 md:p-6 overflow-x-auto">
             <p class="text-xs text-gray-400 text-center mb-4"><i class="fas fa-info-circle"></i> Tap a team's name to see their matches</p>
             <table class="w-full text-left border-collapse">
@@ -79,16 +75,11 @@
                         <th class="p-2 md:p-3 text-center">NRR</th>
                     </tr>
                 </thead>
-                <tbody id="standingsBody">
-                    <!-- Populated by JS -->
-                </tbody>
+                <tbody id="standingsBody"></tbody>
             </table>
         </div>
 
-        <!-- Matches View -->
         <div id="view-matches" class="hide space-y-6">
-            
-            <!-- Admin Match Entry (Hidden to public) -->
             <div id="adminPanel" class="glass rounded-2xl p-6 hide border-t-4 border-blue-500">
                 <h3 class="text-xl font-bold mb-4"><i class="fas fa-plus-circle mr-2"></i>Add New Match</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -136,16 +127,12 @@
                 <button onclick="addMatch()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold transition-all">Submit Match</button>
             </div>
 
-            <!-- Team Filter Banner -->
             <div id="filterBanner" class="hide bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-3 flex justify-between items-center">
                 <span id="filterText" class="font-bold text-yellow-400 text-sm md:text-base"></span>
                 <button onclick="clearFilter()" class="bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm transition-colors border border-gray-600">Show All</button>
             </div>
 
-            <!-- Match History Container -->
-            <div id="matchesContainer" class="space-y-4">
-                <!-- Matches injected here -->
-            </div>
+            <div id="matchesContainer" class="space-y-4"></div>
         </div>
     </div>
 
@@ -347,4 +334,14 @@
                 t1O: parseFloat(document.getElementById('t1O').value),
                 t2: document.getElementById('t2').value,
                 t2R: parseInt(document.getElementById('t2R').value),
-                t2W: parseInt(doc
+                t2W: parseInt(document.getElementById('t2W').value),
+                t2O: parseFloat(document.getElementById('t2O').value),
+                win: document.getElementById('winTeam').value.toUpperCase()
+            };
+
+            if(!m.id || isNaN(m.t1R) || isNaN(m.t2R)) {
+                alert("Please fill all numeric fields properly.");
+                return;
+            }
+
+            matches = matches.filter(x => x.id !== m.
