@@ -150,7 +150,6 @@
     </div>
 
     <script>
-        // Data Configuration (Direct Wikipedia PNGs)
         const logos = {
             "CSK": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2b/Chennai_Super_Kings_Logo.svg/300px-Chennai_Super_Kings_Logo.svg.png",
             "KKR": "https://upload.wikimedia.org/wikipedia/en/thumb/4/4c/Kolkata_Knight_Riders_Logo.svg/300px-Kolkata_Knight_Riders_Logo.svg.png",
@@ -162,7 +161,6 @@
             "RCB": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2a/Royal_Challengers_Bangalore_2020.svg/300px-Royal_Challengers_Bangalore_2020.svg.png"
         };
 
-        // Seed matches
         let matches = [
             { id: 9, t1: "SYDNEY SIXERS", t1R: 174, t1W: 10, t1O: 20, t2: "CSK", t2R: 106, t2W: 10, t2O: 20, win: "SYDNEY SIXERS" },
             { id: 7, t1: "MELBOURNE STARS", t1R: 310, t1W: 9, t1O: 20, t2: "RCB", t2R: 221, t2W: 10, t2O: 20, win: "MELBOURNE STARS" },
@@ -177,7 +175,6 @@
         let isAdmin = false;
         let currentTeamFilter = null;
 
-        // UI & Tab Logic
         function switchTab(tab) {
             document.getElementById('view-standings').classList.add('hide');
             document.getElementById('view-matches').classList.add('hide');
@@ -199,7 +196,6 @@
             renderMatches();
         }
 
-        // Authentication Logic
         function handleLogin() {
             const pass = prompt("Enter Admin Password:");
             if(pass === "raxx1756") { 
@@ -221,7 +217,6 @@
             renderMatches();
         }
 
-        // NRR & Math Logic
         function getBalls(overs) {
             let fullOvers = Math.floor(overs);
             let extraBalls = Math.round((overs - fullOvers) * 10);
@@ -299,7 +294,6 @@
             
             let sortedMatches = [...matches].sort((a, b) => b.id - a.id);
 
-            // Apply filter if one is active
             if (currentTeamFilter) {
                 sortedMatches = sortedMatches.filter(m => m.t1 === currentTeamFilter || m.t2 === currentTeamFilter);
                 document.getElementById('filterBanner').classList.remove('hide');
@@ -344,10 +338,13 @@
             });
         }
 
-        // Admin CRUD Actions
         function addMatch() {
             let m = {
                 id: parseInt(document.getElementById('mNum').value),
                 t1: document.getElementById('t1').value,
                 t1R: parseInt(document.getElementById('t1R').value),
-                t1W: parseInt(document.getElementById('t1W')
+                t1W: parseInt(document.getElementById('t1W').value),
+                t1O: parseFloat(document.getElementById('t1O').value),
+                t2: document.getElementById('t2').value,
+                t2R: parseInt(document.getElementById('t2R').value),
+                t2W: parseInt(doc
