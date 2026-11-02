@@ -145,18 +145,27 @@
     </div>
 
     <script>
-        const logos = {
+        const defaultLogos = {
             "CSK": "https://upload.wikimedia.org/wikipedia/en/2/2b/Chennai_Super_Kings_Logo.svg",
             "KKR": "https://upload.wikimedia.org/wikipedia/en/4/4c/Kolkata_Knight_Riders_Logo.svg",
-            "KARACHI KINGS": "https://upload.wikimedia.org/wikipedia/en/b/b5/Karachi_Kings_Logo.svg",
-            "PAARL ROYALS": "https://upload.wikimedia.org/wikipedia/en/2/2a/Paarl_Royals_logo.svg",
+            "KARACHI KINGS": "https://upload.wikimedia.org/wikipedia/en/6/60/Karachi_Kings.png",
+            "PAARL ROYALS": "https://upload.wikimedia.org/wikipedia/en/0/07/Paarl_Royals_logo_%282%29.svg",
             "MELBOURNE STARS": "https://upload.wikimedia.org/wikipedia/en/5/52/Melbourne_Stars_logo.svg",
-            "PERTH SCORCHERS": "https://upload.wikimedia.org/wikipedia/en/4/43/Perth_Scorchers_Logo.svg",
+            "PERTH SCORCHERS": "https://upload.wikimedia.org/wikipedia/en/4/43/Perth_Scorchers_logo.svg",
             "SYDNEY SIXERS": "https://upload.wikimedia.org/wikipedia/en/9/91/Sydney_Sixers_Logo.svg",
             "RCB": "https://upload.wikimedia.org/wikipedia/en/2/2a/Royal_Challengers_Bangalore_2020.svg"
         };
 
-        let matches = [
+        let savedLogos = {};
+        try {
+            savedLogos = JSON.parse(localStorage.getItem('clt20_logos')) || {};
+        } catch (e) {
+            savedLogos = {};
+        }
+        let logos = { ...defaultLogos, ...savedLogos };
+
+        const initialMatches = [
+            { id: 10, t1: "RCB", t1R: 323, t1W: 5, t1O: 20, t2: "PAARL ROYALS", t2R: 162, t2W: 10, t2O: 20, win: "RCB" },
             { id: 9, t1: "SYDNEY SIXERS", t1R: 174, t1W: 10, t1O: 20, t2: "CSK", t2R: 106, t2W: 10, t2O: 20, win: "SYDNEY SIXERS" },
             { id: 7, t1: "MELBOURNE STARS", t1R: 310, t1W: 9, t1O: 20, t2: "RCB", t2R: 221, t2W: 10, t2O: 20, win: "MELBOURNE STARS" },
             { id: 6, t1: "KKR", t1R: 125, t1W: 4, t1O: 6.5, t2: "PAARL ROYALS", t2R: 119, t2W: 10, t2O: 20, win: "KKR" },
@@ -167,7 +176,20 @@
             { id: 1, t1: "CSK", t1R: 185, t1W: 10, t1O: 20, t2: "KARACHI KINGS", t2R: 186, t2W: 6, t2O: 13, win: "KARACHI KINGS" }
         ];
 
+        let matches = [];
+        try {
+            const storedMatches = localStorage.getItem('clt20_matches');
+            matches = storedMatches ? JSON.parse(storedMatches) : [...initialMatches];
+            if (!matches.some(m => m.id === 10)) {
+                matches.unshift({ id: 10, t1: "RCB", t1R: 323, t1W: 5, t1O: 20, t2: "PAARL ROYALS", t2R: 162, t2W: 10, t2O: 20, win: "RCB" });
+                localStorage.setItem('clt20_matches', JSON.stringify(matches));
+            }
+        } catch (e) {
+            matches = [...initialMatches];
+        }
+
         let upcomingMatches = [
+            { id: 8, date: "Nov 1 (Sun)", t1: "Perth Scorchers", t2: "Karachi Kings", pitch: "Dry Pitch", venue: "Wankhede" },
             { id: 11, date: "Nov 3 (Tue)", t1: "KKR", t2: "Melbourne Stars", pitch: "Green Pitch", venue: "Wankhede" },
             { id: 12, date: "Nov 4 (Wed)", t1: "Sydney Sixers", t2: "RCB", pitch: "Green Pitch", venue: "Lord's" },
             { id: 13, date: "Nov 5 (Thu)", t1: "KKR", t2: "CSK", pitch: "Green Pitch", venue: "Cape Town" },
@@ -190,6 +212,14 @@
 
         let isAdmin = false;
         let currentTeamFilter = null;
+
+        function saveMatchesToStorage() {
+            try {
+                localStorage.setItem('clt20_matches', JSON.stringify(matches));
+            } catch (e) {
+                console.error("Failed to save matches", e);
+            }
+        }
 
         function switchTab(tab) {
             document.getElementById('view-standings').classList.add('hide');
@@ -244,9 +274,11 @@
             let newUrl = prompt(`Enter new image URL for ${teamName}:`, logos[teamName] || "");
             if (newUrl !== null && newUrl.trim() !== "") {
                 logos[teamName] = newUrl.trim();
+                localStorage.setItem('clt20_logos', JSON.stringify(logos));
                 calculateStandings();
                 renderMatches();
                 renderUpcoming();
+                alert(`Logo for ${teamName} updated and saved!`);
             }
         }
 
@@ -448,6 +480,7 @@
 
             matches = matches.filter(x => x.id !== m.id); 
             matches.push(m);
+            saveMatchesToStorage();
             
             document.querySelectorAll('input').forEach(i => i.value = '');
             
@@ -461,6 +494,7 @@
         function deleteMatch(id) {
             if(confirm(`Are you sure you want to delete Match ${id}?`)) {
                 matches = matches.filter(m => m.id !== id);
+                saveMatchesToStorage();
                 calculateStandings();
                 renderMatches();
                 renderUpcoming();
