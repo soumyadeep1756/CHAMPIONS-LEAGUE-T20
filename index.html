@@ -7,6 +7,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+
+    <!-- Firebase App & Database SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
     <style>
         body {
             font-family: 'Poppins', sans-serif;
@@ -40,7 +45,10 @@
             </div>
             <h1 class="text-lg md:text-xl font-bold tracking-wider">CHAMPIONS LEAGUE</h1>
         </div>
-        <div>
+        <div class="flex items-center gap-3">
+            <span id="syncIndicator" class="text-xs text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Live Cloud Sync
+            </span>
             <button id="loginBtn" onclick="handleLogin()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold text-sm transition-colors">
                 <i class="fas fa-lock mr-2"></i>Admin
             </button>
@@ -92,7 +100,7 @@
                 <h3 class="text-xl font-bold mb-4"><i class="fas fa-plus-circle mr-2"></i>Add Played Match Scorecard</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <input type="number" id="mNum" placeholder="Match Number (e.g. 11)" class="bg-black/50 border border-white/20 rounded p-2 text-white">
-                    <input type="text" id="winTeam" placeholder="Winning Team Name" class="bg-black/50 border border-white/20 rounded p-2 text-white">
+                    <input type="text" id="winTeam" placeholder="Winning Team Name (UPPERCASE)" class="bg-black/50 border border-white/20 rounded p-2 text-white">
                     
                     <div class="p-3 border border-white/10 rounded-lg">
                         <label class="text-sm text-gray-400 mb-2 block">Team 1 Details</label>
@@ -107,9 +115,9 @@
                             <option value="RCB">RCB</option>
                         </select>
                         <div class="flex gap-2">
-                            <input type="number" id="t1R" placeholder="Runs" class="w-1/3 bg-black/50 rounded p-2">
-                            <input type="number" id="t1W" placeholder="Wkts" class="w-1/3 bg-black/50 rounded p-2">
-                            <input type="number" step="0.1" id="t1O" placeholder="Ovs" class="w-1/3 bg-black/50 rounded p-2">
+                            <input type="number" id="t1R" placeholder="Runs" class="w-1/3 bg-black/50 rounded p-2 text-white">
+                            <input type="number" id="t1W" placeholder="Wkts" class="w-1/3 bg-black/50 rounded p-2 text-white">
+                            <input type="number" step="0.1" id="t1O" placeholder="Ovs" class="w-1/3 bg-black/50 rounded p-2 text-white">
                         </div>
                     </div>
 
@@ -126,13 +134,13 @@
                             <option value="RCB">RCB</option>
                         </select>
                         <div class="flex gap-2">
-                            <input type="number" id="t2R" placeholder="Runs" class="w-1/3 bg-black/50 rounded p-2">
-                            <input type="number" id="t2W" placeholder="Wkts" class="w-1/3 bg-black/50 rounded p-2">
-                            <input type="number" step="0.1" id="t2O" placeholder="Ovs" class="w-1/3 bg-black/50 rounded p-2">
+                            <input type="number" id="t2R" placeholder="Runs" class="w-1/3 bg-black/50 rounded p-2 text-white">
+                            <input type="number" id="t2W" placeholder="Wkts" class="w-1/3 bg-black/50 rounded p-2 text-white">
+                            <input type="number" step="0.1" id="t2O" placeholder="Ovs" class="w-1/3 bg-black/50 rounded p-2 text-white">
                         </div>
                     </div>
                 </div>
-                <button onclick="addMatch()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold transition-all">Submit Match Scorecard</button>
+                <button onclick="addMatch()" class="mt-4 w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold transition-all">Submit Match Scorecard (Saves Globally)</button>
             </div>
 
             <div id="filterBanner" class="hide bg-yellow-500/20 border border-yellow-500/50 rounded-xl p-3 flex justify-between items-center">
@@ -145,6 +153,22 @@
     </div>
 
     <script>
+        // 1. Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCHai8Sgu6ZjmtfkcqN7UJNkvc8rbj5aiQ",
+            authDomain: "champions-league-t20-f06ff.firebaseapp.com",
+            databaseURL: "https://champions-league-t20-f06ff-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "champions-league-t20-f06ff",
+            storageBucket: "champions-league-t20-f06ff.firebasestorage.app",
+            messagingSenderId: "1086655519849",
+            appId: "1:1086655519849:web:46148d8ecce7cb5d7e96f8"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+
+        // 2. Default Seed Data
         const defaultLogos = {
             "CSK": "https://upload.wikimedia.org/wikipedia/en/2/2b/Chennai_Super_Kings_Logo.svg",
             "KKR": "https://upload.wikimedia.org/wikipedia/en/4/4c/Kolkata_Knight_Riders_Logo.svg",
@@ -155,14 +179,6 @@
             "SYDNEY SIXERS": "https://upload.wikimedia.org/wikipedia/en/9/91/Sydney_Sixers_Logo.svg",
             "RCB": "https://upload.wikimedia.org/wikipedia/en/2/2a/Royal_Challengers_Bangalore_2020.svg"
         };
-
-        let savedLogos = {};
-        try {
-            savedLogos = JSON.parse(localStorage.getItem('clt20_logos')) || {};
-        } catch (e) {
-            savedLogos = {};
-        }
-        let logos = { ...defaultLogos, ...savedLogos };
 
         const initialMatches = [
             { id: 10, t1: "RCB", t1R: 323, t1W: 5, t1O: 20, t2: "PAARL ROYALS", t2R: 162, t2W: 10, t2O: 20, win: "RCB" },
@@ -175,18 +191,6 @@
             { id: 2, t1: "PAARL ROYALS", t1R: 205, t1W: 8, t1O: 20, t2: "MELBOURNE STARS", t2R: 213, t2W: 8, t2O: 20, win: "MELBOURNE STARS" },
             { id: 1, t1: "CSK", t1R: 185, t1W: 10, t1O: 20, t2: "KARACHI KINGS", t2R: 186, t2W: 6, t2O: 13, win: "KARACHI KINGS" }
         ];
-
-        let matches = [];
-        try {
-            const storedMatches = localStorage.getItem('clt20_matches');
-            matches = storedMatches ? JSON.parse(storedMatches) : [...initialMatches];
-            if (!matches.some(m => m.id === 10)) {
-                matches.unshift({ id: 10, t1: "RCB", t1R: 323, t1W: 5, t1O: 20, t2: "PAARL ROYALS", t2R: 162, t2W: 10, t2O: 20, win: "RCB" });
-                localStorage.setItem('clt20_matches', JSON.stringify(matches));
-            }
-        } catch (e) {
-            matches = [...initialMatches];
-        }
 
         let upcomingMatches = [
             { id: 8, date: "Nov 1 (Sun)", t1: "Perth Scorchers", t2: "Karachi Kings", pitch: "Dry Pitch", venue: "Wankhede" },
@@ -210,16 +214,44 @@
             { id: 28, date: "Nov 16 (Mon)", t1: "Perth Scorchers", t2: "Sydney Sixers", pitch: "Green Pitch", venue: "Lord's" }
         ];
 
+        let matches = [...initialMatches];
+        let logos = { ...defaultLogos };
         let isAdmin = false;
         let currentTeamFilter = null;
 
-        function saveMatchesToStorage() {
-            try {
-                localStorage.setItem('clt20_matches', JSON.stringify(matches));
-            } catch (e) {
-                console.error("Failed to save matches", e);
+        // 3. Realtime Database Listeners
+        const matchesRef = db.ref('tournament/matches');
+        const logosRef = db.ref('tournament/logos');
+
+        // Sync Logos from Firebase
+        logosRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                logos = { ...defaultLogos, ...data };
+            } else {
+                // Auto-seed default logos on first run
+                logosRef.set(defaultLogos);
             }
-        }
+            calculateStandings();
+            renderMatches();
+            renderUpcoming();
+        });
+
+        // Sync Matches from Firebase
+        matchesRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                // Firebase stores collections as objects or arrays
+                matches = Array.isArray(data) ? data.filter(Boolean) : Object.values(data);
+            } else {
+                // Auto-seed initial matches on first run
+                matchesRef.set(initialMatches);
+                matches = [...initialMatches];
+            }
+            calculateStandings();
+            renderMatches();
+            renderUpcoming();
+        });
 
         function switchTab(tab) {
             document.getElementById('view-standings').classList.add('hide');
@@ -246,7 +278,7 @@
 
         function handleLogin() {
             const pass = prompt("Enter Admin Password:");
-            if(pass === "raxx1756") { 
+            if (pass === "raxx1756") { 
                 isAdmin = true;
                 document.getElementById('loginBtn').classList.add('hide');
                 document.getElementById('logoutBtn').classList.remove('hide');
@@ -254,7 +286,7 @@
                 calculateStandings();
                 renderMatches();
                 renderUpcoming();
-            } else if(pass !== null) {
+            } else if (pass !== null) {
                 alert("Incorrect Password");
             }
         }
@@ -273,12 +305,10 @@
             if (!isAdmin) return;
             let newUrl = prompt(`Enter new image URL for ${teamName}:`, logos[teamName] || "");
             if (newUrl !== null && newUrl.trim() !== "") {
-                logos[teamName] = newUrl.trim();
-                localStorage.setItem('clt20_logos', JSON.stringify(logos));
-                calculateStandings();
-                renderMatches();
-                renderUpcoming();
-                alert(`Logo for ${teamName} updated and saved!`);
+                // Save directly to Firebase Cloud
+                logosRef.child(teamName).set(newUrl.trim())
+                    .then(() => alert(`Logo for ${teamName} updated globally!`))
+                    .catch(err => alert("Error saving to Firebase: " + err.message));
             }
         }
 
@@ -297,12 +327,12 @@
         function calculateStandings() {
             let stats = {};
             Object.keys(logos).forEach(team => {
-                stats[team] = { p:0, w:0, l:0, pts:0, runScored:0, overFaced:0, runConceded:0, overBowled:0 };
+                stats[team] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, overFaced: 0, runConceded: 0, overBowled: 0 };
             });
 
             matches.forEach(m => {
-                if(!stats[m.t1]) stats[m.t1] = { p:0, w:0, l:0, pts:0, runScored:0, overFaced:0, runConceded:0, overBowled:0 };
-                if(!stats[m.t2]) stats[m.t2] = { p:0, w:0, l:0, pts:0, runScored:0, overFaced:0, runConceded:0, overBowled:0 };
+                if (!stats[m.t1]) stats[m.t1] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, overFaced: 0, runConceded: 0, overBowled: 0 };
+                if (!stats[m.t2]) stats[m.t2] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, overFaced: 0, runConceded: 0, overBowled: 0 };
 
                 stats[m.t1].p++;
                 stats[m.t1].runScored += m.t1R;
@@ -470,40 +500,30 @@
                 t2R: parseInt(document.getElementById('t2R').value),
                 t2W: parseInt(document.getElementById('t2W').value),
                 t2O: parseFloat(document.getElementById('t2O').value),
-                win: document.getElementById('winTeam').value.toUpperCase()
+                win: document.getElementById('winTeam').value.trim().toUpperCase()
             };
 
-            if(!m.id || isNaN(m.t1R) || isNaN(m.t2R)) {
-                alert("Please fill all numeric fields properly.");
+            if (!m.id || isNaN(m.t1R) || isNaN(m.t2R) || !m.win) {
+                alert("Please fill in all match and score fields properly.");
                 return;
             }
 
-            matches = matches.filter(x => x.id !== m.id); 
-            matches.push(m);
-            saveMatchesToStorage();
-            
-            document.querySelectorAll('input').forEach(i => i.value = '');
-            
-            calculateStandings();
-            currentTeamFilter = null; 
-            renderMatches();
-            renderUpcoming();
-            switchTab('standings');
+            // Save match by ID directly into Firebase
+            db.ref(`tournament/matches/${m.id}`).set(m)
+                .then(() => {
+                    document.querySelectorAll('#adminPanel input').forEach(i => i.value = '');
+                    currentTeamFilter = null; 
+                    switchTab('standings');
+                })
+                .catch(err => alert("Error saving scorecard: " + err.message));
         }
 
         function deleteMatch(id) {
-            if(confirm(`Are you sure you want to delete Match ${id}?`)) {
-                matches = matches.filter(m => m.id !== id);
-                saveMatchesToStorage();
-                calculateStandings();
-                renderMatches();
-                renderUpcoming();
+            if (confirm(`Are you sure you want to delete Match ${id}?`)) {
+                db.ref(`tournament/matches/${id}`).remove()
+                    .catch(err => alert("Error deleting match: " + err.message));
             }
         }
-
-        calculateStandings();
-        renderMatches();
-        renderUpcoming();
     </script>
 </body>
 </html>
