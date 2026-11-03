@@ -60,18 +60,23 @@
 
     <div class="max-w-4xl mx-auto mt-6 px-4">
         
-        <div class="flex gap-2 md:gap-4 mb-6">
-            <button onclick="switchTab('standings')" id="tab-standings" class="flex-1 py-3 glass rounded-xl font-bold text-center bg-blue-600/30 border-blue-400 transition-all text-xs md:text-base">
+        <!-- Navigation Tabs -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mb-6">
+            <button onclick="switchTab('standings')" id="tab-standings" class="py-3 glass rounded-xl font-bold text-center bg-blue-600/30 border-blue-400 transition-all text-xs md:text-sm">
                 <i class="fas fa-list-ol mr-1"></i> Standings
             </button>
-            <button onclick="clearFilter(); switchTab('matches')" id="tab-matches" class="flex-1 py-3 glass rounded-xl font-bold text-center hover:bg-white/10 transition-all text-xs md:text-base">
+            <button onclick="clearFilter(); switchTab('matches')" id="tab-matches" class="py-3 glass rounded-xl font-bold text-center hover:bg-white/10 transition-all text-xs md:text-sm">
                 <i class="fas fa-bolt mr-1"></i> Played
             </button>
-            <button onclick="switchTab('upcoming')" id="tab-upcoming" class="flex-1 py-3 glass rounded-xl font-bold text-center hover:bg-white/10 transition-all text-xs md:text-base">
+            <button onclick="switchTab('upcoming')" id="tab-upcoming" class="py-3 glass rounded-xl font-bold text-center hover:bg-white/10 transition-all text-xs md:text-sm">
                 <i class="fas fa-calendar-alt mr-1"></i> Remaining
+            </button>
+            <button onclick="switchTab('stats')" id="tab-stats" class="py-3 glass rounded-xl font-bold text-center hover:bg-white/10 transition-all text-xs md:text-sm">
+                <i class="fas fa-star mr-1 text-yellow-400"></i> Top Performers
             </button>
         </div>
 
+        <!-- 1. STANDINGS VIEW -->
         <div id="view-standings" class="glass rounded-2xl p-4 md:p-6 overflow-x-auto">
             <p class="text-xs text-gray-400 text-center mb-4"><i class="fas fa-info-circle"></i> <span id="adminLogoTip">Tap logo to update (Admin)</span> | Tap team name to filter matches</p>
             <table class="w-full text-left border-collapse">
@@ -90,11 +95,13 @@
             </table>
         </div>
 
+        <!-- 2. REMAINING UPCOMING VIEW -->
         <div id="view-upcoming" class="hide space-y-4">
             <h3 class="text-xl font-bold mb-2"><i class="fas fa-clock mr-2 text-yellow-400"></i>Upcoming Remaining Matches</h3>
             <div id="upcomingContainer" class="space-y-3"></div>
         </div>
 
+        <!-- 3. PLAYED MATCHES VIEW -->
         <div id="view-matches" class="hide space-y-6">
             <div id="adminPanel" class="glass rounded-2xl p-6 hide border-t-4 border-blue-500">
                 <h3 class="text-xl font-bold mb-4"><i class="fas fa-plus-circle mr-2"></i>Add Played Match Scorecard</h3>
@@ -150,6 +157,70 @@
 
             <div id="matchesContainer" class="space-y-4"></div>
         </div>
+
+        <!-- 4. TOP PERFORMERS VIEW -->
+        <div id="view-stats" class="hide space-y-6">
+            <!-- Hidden file input for quick avatar updates -->
+            <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="handleDirectAvatarUpload(event)">
+
+            <!-- Admin Player Add Form -->
+            <div id="adminPlayerPanel" class="glass rounded-2xl p-6 hide border-t-4 border-yellow-500">
+                <h3 class="text-xl font-bold mb-4"><i class="fas fa-user-plus mr-2 text-yellow-400"></i>Add Top Performer</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="number" id="statMatchNum" placeholder="Match Number (e.g. 1)" class="bg-black/50 border border-white/20 rounded p-2 text-white">
+                    <input type="text" id="statPlayerName" placeholder="Player Name" class="bg-black/50 border border-white/20 rounded p-2 text-white">
+                    <input type="text" id="statTeam" placeholder="Team (e.g. KARACHI KINGS)" class="bg-black/50 border border-white/20 rounded p-2 text-white">
+                    <select id="statRole" class="bg-black/50 border border-white/20 rounded p-2 text-white">
+                        <option value="Batsman">Batter / Key Knock</option>
+                        <option value="Bowler">Bowler / Spell</option>
+                        <option value="All-Rounder">All-Round Performance</option>
+                        <option value="POTM">Player of the Match</option>
+                    </select>
+
+                    <div class="p-3 border border-white/10 rounded-lg">
+                        <label class="text-sm text-gray-400 mb-1 block">Batting Figures (Optional)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="statRuns" placeholder="Runs (e.g. 84)" class="w-1/2 bg-black/50 rounded p-2 text-white text-sm">
+                            <input type="text" id="statBalls" placeholder="Balls / 4s / 6s (e.g. 42b, 7x4, 5x6)" class="w-1/2 bg-black/50 rounded p-2 text-white text-sm">
+                        </div>
+                    </div>
+
+                    <div class="p-3 border border-white/10 rounded-lg">
+                        <label class="text-sm text-gray-400 mb-1 block">Bowling Figures (Optional)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="statWkts" placeholder="Wkts/Runs (e.g. 4/21)" class="w-1/2 bg-black/50 rounded p-2 text-white text-sm">
+                            <input type="text" id="statOvers" placeholder="Overs (e.g. 4.0 ov)" class="w-1/2 bg-black/50 rounded p-2 text-white text-sm">
+                        </div>
+                    </div>
+
+                    <!-- Native File Upload Slot -->
+                    <div class="p-3 border border-dashed border-white/20 rounded-lg md:col-span-2 flex flex-col md:flex-row items-center gap-4 bg-black/30">
+                        <div class="w-16 h-16 rounded-full border-2 border-yellow-500 overflow-hidden flex items-center justify-center bg-slate-800 flex-shrink-0">
+                            <img id="formAvatarPreview" src="https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg" class="w-full h-full object-cover hide">
+                            <i id="formAvatarPlaceholder" class="fas fa-user text-gray-400 text-xl"></i>
+                        </div>
+                        <div class="flex-1 text-center md:text-left">
+                            <label class="text-sm font-semibold text-white block mb-1">Choose Photo From Your Device</label>
+                            <span class="text-xs text-gray-400 block mb-2">Upload any JPEG/PNG image from your folders</span>
+                            <input type="file" id="statLocalFile" accept="image/*" onchange="previewSelectedImage(event)" class="text-xs text-gray-300 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-yellow-500 file:text-black hover:file:bg-yellow-400 cursor-pointer">
+                        </div>
+                    </div>
+
+                    <input type="text" id="statHighlight" placeholder="Highlight note (e.g. 'Match-winning 92-run stand with Babar' or 'Defended 12 in the 20th over')" class="bg-black/50 border border-white/20 rounded p-2 text-white md:col-span-2">
+                </div>
+                <button onclick="addPlayerStat()" class="mt-4 w-full bg-yellow-600 hover:bg-yellow-700 text-slate-950 font-bold py-3 rounded-xl transition-all">
+                    Save Top Performer (Saves Globally)
+                </button>
+            </div>
+
+            <div class="flex justify-between items-center">
+                <h3 class="text-xl font-bold"><i class="fas fa-medal mr-2 text-yellow-400"></i>Top Performers</h3>
+                <span class="text-xs text-gray-400"><i class="fas fa-folder-open mr-1"></i>Tap any player avatar to choose a photo from folders (Admin)</span>
+            </div>
+
+            <div id="playerStatsContainer" class="space-y-6"></div>
+        </div>
+
     </div>
 
     <script>
@@ -216,52 +287,66 @@
 
         let matches = [...initialMatches];
         let logos = { ...defaultLogos };
+        let playerStats = [];
         let isAdmin = false;
         let currentTeamFilter = null;
+        let selectedPlayerImageBase64 = "";
+        let currentEditingFbKey = null;
 
-        // 3. Realtime Database Listeners
+        // 3. Realtime Database References
         const matchesRef = db.ref('tournament/matches');
         const logosRef = db.ref('tournament/logos');
+        const statsRef = db.ref('tournament/playerStats');
 
-        // Sync Logos from Firebase
+        // Sync Logos
         logosRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 logos = { ...defaultLogos, ...data };
             } else {
-                // Auto-seed default logos on first run
                 logosRef.set(defaultLogos);
             }
             calculateStandings();
             renderMatches();
             renderUpcoming();
+            renderPlayerStats();
         });
 
-        // Sync Matches from Firebase
+        // Sync Matches
         matchesRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
-                // Firebase stores collections as objects or arrays
                 matches = Array.isArray(data) ? data.filter(Boolean) : Object.values(data);
             } else {
-                // Auto-seed initial matches on first run
                 matchesRef.set(initialMatches);
                 matches = [...initialMatches];
             }
             calculateStandings();
             renderMatches();
             renderUpcoming();
+            renderPlayerStats();
+        });
+
+        // Sync Player Stats
+        statsRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                playerStats = Object.keys(data).map(key => ({
+                    _fbKey: key,
+                    ...data[key]
+                }));
+            } else {
+                playerStats = [];
+            }
+            renderPlayerStats();
         });
 
         function switchTab(tab) {
-            document.getElementById('view-standings').classList.add('hide');
-            document.getElementById('view-matches').classList.add('hide');
-            document.getElementById('view-upcoming').classList.add('hide');
+            ['standings', 'matches', 'upcoming', 'stats'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hide');
+                document.getElementById(`tab-${t}`).classList.remove('bg-blue-600/30', 'border-blue-400');
+            });
             document.getElementById(`view-${tab}`).classList.remove('hide');
-            
-            document.getElementById('tab-standings').classList.remove('bg-blue-600/30', 'border-blue-400');
-            document.getElementById('tab-matches').classList.remove('bg-blue-600/30', 'border-blue-400');
-            document.getElementById('tab-upcoming').classList.remove('bg-blue-600/30', 'border-blue-400');
             document.getElementById(`tab-${tab}`).classList.add('bg-blue-600/30', 'border-blue-400');
         }
 
@@ -283,9 +368,11 @@
                 document.getElementById('loginBtn').classList.add('hide');
                 document.getElementById('logoutBtn').classList.remove('hide');
                 document.getElementById('adminPanel').classList.remove('hide');
+                document.getElementById('adminPlayerPanel').classList.remove('hide');
                 calculateStandings();
                 renderMatches();
                 renderUpcoming();
+                renderPlayerStats();
             } else if (pass !== null) {
                 alert("Incorrect Password");
             }
@@ -296,20 +383,91 @@
             document.getElementById('logoutBtn').classList.add('hide');
             document.getElementById('loginBtn').classList.remove('hide');
             document.getElementById('adminPanel').classList.add('hide');
+            document.getElementById('adminPlayerPanel').classList.add('hide');
             calculateStandings();
             renderMatches();
             renderUpcoming();
+            renderPlayerStats();
         }
 
         function changeTeamLogo(teamName) {
             if (!isAdmin) return;
             let newUrl = prompt(`Enter new image URL for ${teamName}:`, logos[teamName] || "");
             if (newUrl !== null && newUrl.trim() !== "") {
-                // Save directly to Firebase Cloud
                 logosRef.child(teamName).set(newUrl.trim())
                     .then(() => alert(`Logo for ${teamName} updated globally!`))
-                    .catch(err => alert("Error saving to Firebase: " + err.message));
+                    .catch(err => alert("Error saving: " + err.message));
             }
+        }
+
+        // Image optimization helper (Compresses & scales image to keep Firebase super-fast)
+        function compressImage(file, maxWidth, maxHeight, quality, callback) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = function(event) {
+                const img = new Image();
+                img.src = event.target.result;
+                img.onload = function() {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxWidth) {
+                            height = Math.round((height * maxWidth) / width);
+                            width = maxWidth;
+                        }
+                    } else {
+                        if (height > maxHeight) {
+                            width = Math.round((width * maxHeight) / height);
+                            height = maxHeight;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
+                    callback(compressedBase64);
+                };
+            };
+        }
+
+        // Preview image in the Add Performer form
+        function previewSelectedImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            compressImage(file, 200, 200, 0.75, function(base64Data) {
+                selectedPlayerImageBase64 = base64Data;
+                const previewImg = document.getElementById('formAvatarPreview');
+                const placeholder = document.getElementById('formAvatarPlaceholder');
+                previewImg.src = base64Data;
+                previewImg.classList.remove('hide');
+                placeholder.classList.add('hide');
+            });
+        }
+
+        // Trigger folder selection when tapping an existing player's circle avatar
+        function triggerAvatarFilePick(fbKey) {
+            if (!isAdmin) return;
+            currentEditingFbKey = fbKey;
+            document.getElementById('avatarFileInput').click();
+        }
+
+        function handleDirectAvatarUpload(event) {
+            const file = event.target.files[0];
+            if (!file || !currentEditingFbKey) return;
+
+            compressImage(file, 200, 200, 0.75, function(base64Data) {
+                statsRef.child(currentEditingFbKey).child('photo').set(base64Data)
+                    .then(() => alert("Player photo updated and saved globally!"))
+                    .catch(err => alert("Error uploading photo: " + err.message));
+                document.getElementById('avatarFileInput').value = '';
+                currentEditingFbKey = null;
+            });
         }
 
         function getBalls(overs) {
@@ -489,6 +647,150 @@
             });
         }
 
+        // 4. Render Top Performers Grouped by Match
+        function renderPlayerStats() {
+            const container = document.getElementById('playerStatsContainer');
+            container.innerHTML = '';
+
+            if (playerStats.length === 0) {
+                container.innerHTML = `
+                    <div class="glass rounded-2xl p-8 text-center text-gray-400">
+                        <i class="fas fa-user-astronaut text-4xl mb-3 text-yellow-500/50"></i>
+                        <p class="text-base font-semibold">No top performers recorded yet.</p>
+                        <p class="text-xs mt-1 text-gray-500">${isAdmin ? 'Use the form above to add standout performances!' : 'Admin can log top performances here.'}</p>
+                    </div>`;
+                return;
+            }
+
+            // Group players by match number
+            const grouped = {};
+            playerStats.forEach(p => {
+                const matchId = p.matchNum || "General";
+                if (!grouped[matchId]) grouped[matchId] = [];
+                grouped[matchId].push(p);
+            });
+
+            // Sort matches descending
+            const matchKeys = Object.keys(grouped).sort((a, b) => parseInt(b) - parseInt(a));
+
+            matchKeys.forEach(mKey => {
+                const matchObj = matches.find(m => m.id == mKey);
+                let matchHeaderSub = matchObj ? `${matchObj.t1} vs ${matchObj.t2} (${matchObj.win} won)` : `Match #${mKey}`;
+
+                let matchSection = document.createElement('div');
+                matchSection.className = "glass rounded-2xl p-4 md:p-6 space-y-4";
+                
+                let performersHtml = '';
+                grouped[mKey].forEach(p => {
+                    let photoUrl = p.photo && p.photo.trim() !== '' 
+                        ? p.photo 
+                        : `https://ui-avatars.com/api/?name=${encodeURI(p.name)}&background=1e293b&color=facc15&bold=true`;
+
+                    let deleteBtn = isAdmin ? `<button onclick="deletePlayerStat('${p._fbKey}')" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded bg-red-950/40 border border-red-500/20"><i class="fas fa-trash-alt mr-1"></i>Delete</button>` : '';
+
+                    let photoAction = isAdmin ? `onclick="triggerAvatarFilePick('${p._fbKey}')" title="Click to upload new photo from folders"` : '';
+                    let photoCursor = isAdmin ? 'cursor-pointer hover:ring-2 hover:ring-yellow-400' : '';
+
+                    let battingBadge = p.runs ? `<div class="bg-amber-950/60 border border-amber-500/30 px-3 py-1.5 rounded-lg"><span class="text-amber-300 font-bold text-sm block"><i class="fas fa-baseball-bat-ball mr-1"></i>${p.runs} Runs</span><span class="text-xs text-gray-300">${p.balls || ''}</span></div>` : '';
+
+                    let bowlingBadge = p.wkts ? `<div class="bg-sky-950/60 border border-sky-500/30 px-3 py-1.5 rounded-lg"><span class="text-sky-300 font-bold text-sm block"><i class="fas fa-bowling-ball mr-1"></i>${p.wkts}</span><span class="text-xs text-gray-300">${p.overs || ''}</span></div>` : '';
+
+                    performersHtml += `
+                        <div class="bg-slate-900/60 border border-white/10 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3.5">
+                                <div class="relative flex-shrink-0">
+                                    <img src="${photoUrl}" ${photoAction} class="w-14 h-14 md:w-16 md:h-16 rounded-full object-cover border-2 border-yellow-500/60 shadow-md ${photoCursor}">
+                                    ${isAdmin ? '<span class="absolute -bottom-1 -right-1 bg-yellow-500 text-black text-[9px] font-bold px-1 rounded-full"><i class="fas fa-folder-open"></i></span>' : ''}
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="font-bold text-base md:text-lg text-white">${p.name}</h4>
+                                        <span class="bg-yellow-500/20 text-yellow-400 text-[10px] font-bold px-2 py-0.5 rounded uppercase border border-yellow-500/30">${p.role || 'Performer'}</span>
+                                    </div>
+                                    <p class="text-xs text-gray-400 font-medium">${p.team || ''}</p>
+                                    ${p.highlight ? `<p class="text-xs text-gray-300 italic mt-1 bg-white/5 px-2 py-1 rounded inline-block"><i class="fas fa-quote-left mr-1 text-yellow-400 text-[9px]"></i>${p.highlight}</p>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="flex items-center gap-2 self-end md:self-center">
+                                ${battingBadge}
+                                ${bowlingBadge}
+                                ${deleteBtn}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                matchSection.innerHTML = `
+                    <div class="flex justify-between items-center border-b border-white/10 pb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="bg-blue-600 text-white font-extrabold text-xs px-2.5 py-1 rounded-md">MATCH ${mKey}</span>
+                            <span class="text-sm font-semibold text-gray-300">${matchHeaderSub}</span>
+                        </div>
+                    </div>
+                    <div class="space-y-3">
+                        ${performersHtml}
+                    </div>
+                `;
+                container.appendChild(matchSection);
+            });
+        }
+
+        // Add Match Performer to Firebase
+        function addPlayerStat() {
+            const matchNum = parseInt(document.getElementById('statMatchNum').value);
+            const name = document.getElementById('statPlayerName').value.trim();
+            const team = document.getElementById('statTeam').value.trim().toUpperCase();
+            const role = document.getElementById('statRole').value;
+            const runs = document.getElementById('statRuns').value.trim();
+            const balls = document.getElementById('statBalls').value.trim();
+            const wkts = document.getElementById('statWkts').value.trim();
+            const overs = document.getElementById('statOvers').value.trim();
+            const highlight = document.getElementById('statHighlight').value.trim();
+
+            if (isNaN(matchNum) || !name) {
+                alert("Please enter at least the Match Number and Player Name.");
+                return;
+            }
+
+            const statPayload = {
+                matchNum,
+                name,
+                team,
+                role,
+                runs,
+                balls,
+                wkts,
+                overs,
+                photo: selectedPlayerImageBase64 || "",
+                highlight,
+                timestamp: Date.now()
+            };
+
+            statsRef.push(statPayload)
+                .then(() => {
+                    document.getElementById('statPlayerName').value = '';
+                    document.getElementById('statRuns').value = '';
+                    document.getElementById('statBalls').value = '';
+                    document.getElementById('statWkts').value = '';
+                    document.getElementById('statOvers').value = '';
+                    document.getElementById('statLocalFile').value = '';
+                    document.getElementById('statHighlight').value = '';
+                    document.getElementById('formAvatarPreview').classList.add('hide');
+                    document.getElementById('formAvatarPlaceholder').classList.remove('hide');
+                    selectedPlayerImageBase64 = "";
+                    alert("Top performer added and saved globally!");
+                })
+                .catch(err => alert("Error saving stat: " + err.message));
+        }
+
+        function deletePlayerStat(fbKey) {
+            if (confirm("Are you sure you want to delete this player performance?")) {
+                statsRef.child(fbKey).remove()
+                    .catch(err => alert("Error deleting: " + err.message));
+            }
+        }
+
         function addMatch() {
             let m = {
                 id: parseInt(document.getElementById('mNum').value),
@@ -508,7 +810,6 @@
                 return;
             }
 
-            // Save match by ID directly into Firebase
             db.ref(`tournament/matches/${m.id}`).set(m)
                 .then(() => {
                     document.querySelectorAll('#adminPanel input').forEach(i => i.value = '');
