@@ -215,7 +215,6 @@
 
             <div class="flex justify-between items-center">
                 <h3 class="text-xl font-bold"><i class="fas fa-medal mr-2 text-yellow-400"></i>Top Performers</h3>
-                <span class="text-xs text-gray-400"><i class="fas fa-folder-open mr-1"></i>Tap any player avatar to choose a photo from folders (Admin)</span>
             </div>
 
             <div id="playerStatsContainer" class="space-y-6"></div>
@@ -400,7 +399,7 @@
             }
         }
 
-        // Image optimization helper (Compresses & scales image to keep Firebase super-fast)
+        // Image optimization helper (Compresses & scales image)
         function compressImage(file, maxWidth, maxHeight, quality, callback) {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -662,7 +661,6 @@
                 return;
             }
 
-            // Group players by match number
             const grouped = {};
             playerStats.forEach(p => {
                 const matchId = p.matchNum || "General";
@@ -670,7 +668,6 @@
                 grouped[matchId].push(p);
             });
 
-            // Sort matches descending
             const matchKeys = Object.keys(grouped).sort((a, b) => parseInt(b) - parseInt(a));
 
             matchKeys.forEach(mKey => {
