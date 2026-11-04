@@ -160,10 +160,8 @@
 
         <!-- 4. TOP PERFORMERS VIEW -->
         <div id="view-stats" class="hide space-y-6">
-            <!-- Hidden file input for quick avatar updates -->
             <input type="file" id="avatarFileInput" accept="image/*" class="hidden" onchange="handleDirectAvatarUpload(event)">
 
-            <!-- Admin Player Add Form -->
             <div id="adminPlayerPanel" class="glass rounded-2xl p-6 hide border-t-4 border-yellow-500">
                 <h3 class="text-xl font-bold mb-4"><i class="fas fa-user-plus mr-2 text-yellow-400"></i>Add Top Performer</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -193,7 +191,6 @@
                         </div>
                     </div>
 
-                    <!-- Native File Upload Slot -->
                     <div class="p-3 border border-dashed border-white/20 rounded-lg md:col-span-2 flex flex-col md:flex-row items-center gap-4 bg-black/30">
                         <div class="w-16 h-16 rounded-full border-2 border-yellow-500 overflow-hidden flex items-center justify-center bg-slate-800 flex-shrink-0">
                             <img id="formAvatarPreview" src="https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg" class="w-full h-full object-cover hide">
@@ -206,7 +203,7 @@
                         </div>
                     </div>
 
-                    <input type="text" id="statHighlight" placeholder="Highlight note (e.g. 'Match-winning 92-run stand with Babar' or 'Defended 12 in the 20th over')" class="bg-black/50 border border-white/20 rounded p-2 text-white md:col-span-2">
+                    <input type="text" id="statHighlight" placeholder="Highlight note (e.g. 'Match-winning 92-run stand with Babar')" class="bg-black/50 border border-white/20 rounded p-2 text-white md:col-span-2">
                 </div>
                 <button onclick="addPlayerStat()" class="mt-4 w-full bg-yellow-600 hover:bg-yellow-700 text-slate-950 font-bold py-3 rounded-xl transition-all">
                     Save Top Performer (Saves Globally)
@@ -223,7 +220,6 @@
     </div>
 
     <script>
-        // 1. Firebase Configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCHai8Sgu6ZjmtfkcqN7UJNkvc8rbj5aiQ",
             authDomain: "champions-league-t20-f06ff.firebaseapp.com",
@@ -234,11 +230,9 @@
             appId: "1:1086655519849:web:46148d8ecce7cb5d7e96f8"
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // 2. Default Seed Data
         const defaultLogos = {
             "CSK": "https://upload.wikimedia.org/wikipedia/en/2/2b/Chennai_Super_Kings_Logo.svg",
             "KKR": "https://upload.wikimedia.org/wikipedia/en/4/4c/Kolkata_Knight_Riders_Logo.svg",
@@ -292,18 +286,30 @@
         let selectedPlayerImageBase64 = "";
         let currentEditingFbKey = null;
 
-        // 3. Realtime Database References
         const matchesRef = db.ref('tournament/matches');
         const logosRef = db.ref('tournament/logos');
         const statsRef = db.ref('tournament/playerStats');
 
-        // Sync Logos
+        // Robust parsing to clean nulls from sparse Firebase arrays
+        function sanitizeMatches(data) {
+            if (!data) return [];
+            let list = [];
+            if (Array.isArray(data)) {
+                list = data.filter(item => item && typeof item === 'object' && item.id);
+            } else if (typeof data === 'object') {
+                list = Object.values(data).filter(item => item && typeof item === 'object' && item.id);
+            }
+            return list;
+        }
+
+        // Realtime Listener for Logos
         logosRef.on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data) {
+            if (data && typeof data === 'object') {
                 logos = { ...defaultLogos, ...data };
             } else {
                 logosRef.set(defaultLogos);
+                logos = { ...defaultLogos };
             }
             calculateStandings();
             renderMatches();
@@ -311,13 +317,17 @@
             renderPlayerStats();
         });
 
-        // Sync Matches
+        // Realtime Listener for Matches
         matchesRef.on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data) {
-                matches = Array.isArray(data) ? data.filter(Boolean) : Object.values(data);
+            const cleanList = sanitizeMatches(data);
+            if (cleanList.length > 0) {
+                matches = cleanList;
             } else {
-                matchesRef.set(initialMatches);
+                // If database matches node is missing or empty, seed initial data
+                const seedObj = {};
+                initialMatches.forEach(m => { seedObj[`m_${m.id}`] = m; });
+                matchesRef.set(seedObj);
                 matches = [...initialMatches];
             }
             calculateStandings();
@@ -326,10 +336,10 @@
             renderPlayerStats();
         });
 
-        // Sync Player Stats
+        // Realtime Listener for Player Stats
         statsRef.on('value', (snapshot) => {
             const data = snapshot.val();
-            if (data) {
+            if (data && typeof data === 'object') {
                 playerStats = Object.keys(data).map(key => ({
                     _fbKey: key,
                     ...data[key]
@@ -399,7 +409,6 @@
             }
         }
 
-        // Image optimization helper (Compresses & scales image)
         function compressImage(file, maxWidth, maxHeight, quality, callback) {
             const reader = new FileReader();
             reader.readAsDataURL(file);
@@ -434,7 +443,6 @@
             };
         }
 
-        // Preview image in the Add Performer form
         function previewSelectedImage(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -449,7 +457,6 @@
             });
         }
 
-        // Trigger folder selection when tapping an existing player's circle avatar
         function triggerAvatarFilePick(fbKey) {
             if (!isAdmin) return;
             currentEditingFbKey = fbKey;
@@ -470,8 +477,8 @@
         }
 
         function getBalls(overs) {
-            let fullOvers = Math.floor(overs);
-            let extraBalls = Math.round((overs - fullOvers) * 10);
+            let fullOvers = Math.floor(overs || 0);
+            let extraBalls = Math.round(((overs || 0) - fullOvers) * 10);
             return (fullOvers * 6) + extraBalls;
         }
 
@@ -483,25 +490,34 @@
 
         function calculateStandings() {
             let stats = {};
-            Object.keys(logos).forEach(team => {
+            Object.keys(defaultLogos).forEach(team => {
                 stats[team] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, overFaced: 0, runConceded: 0, overBowled: 0 };
             });
 
             matches.forEach(m => {
+                if (!m || !m.t1 || !m.t2) return;
+                
                 if (!stats[m.t1]) stats[m.t1] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, overFaced: 0, runConceded: 0, overBowled: 0 };
                 if (!stats[m.t2]) stats[m.t2] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, overFaced: 0, runConceded: 0, overBowled: 0 };
 
+                const m1R = Number(m.t1R) || 0;
+                const m2R = Number(m.t2R) || 0;
+                const m1W = Number(m.t1W) || 0;
+                const m2W = Number(m.t2W) || 0;
+                const m1O = Number(m.t1O) || 0;
+                const m2O = Number(m.t2O) || 0;
+
                 stats[m.t1].p++;
-                stats[m.t1].runScored += m.t1R;
-                stats[m.t1].overFaced += getMathematicalOvers(m.t1O, m.t1W);
-                stats[m.t1].runConceded += m.t2R;
-                stats[m.t1].overBowled += getMathematicalOvers(m.t2O, m.t2W);
+                stats[m.t1].runScored += m1R;
+                stats[m.t1].overFaced += getMathematicalOvers(m1O, m1W);
+                stats[m.t1].runConceded += m2R;
+                stats[m.t1].overBowled += getMathematicalOvers(m2O, m2W);
                 
                 stats[m.t2].p++;
-                stats[m.t2].runScored += m.t2R;
-                stats[m.t2].overFaced += getMathematicalOvers(m.t2O, m.t2W);
-                stats[m.t2].runConceded += m.t1R;
-                stats[m.t2].overBowled += getMathematicalOvers(m.t1O, m.t1W);
+                stats[m.t2].runScored += m2R;
+                stats[m.t2].overFaced += getMathematicalOvers(m2O, m2W);
+                stats[m.t2].runConceded += m1R;
+                stats[m.t2].overBowled += getMathematicalOvers(m1O, m1W);
 
                 if (m.win === m.t1) { stats[m.t1].w++; stats[m.t1].pts += 2; stats[m.t2].l++; }
                 else if (m.win === m.t2) { stats[m.t2].w++; stats[m.t2].pts += 2; stats[m.t1].l++; }
@@ -509,7 +525,9 @@
 
             let standingsArray = Object.keys(stats).map(team => {
                 let s = stats[team];
-                let nrr = (s.p > 0) ? ((s.runScored / s.overFaced) - (s.runConceded / s.overBowled)) : 0;
+                let nrr = (s.p > 0 && s.overFaced > 0 && s.overBowled > 0) 
+                    ? ((s.runScored / s.overFaced) - (s.runConceded / s.overBowled)) 
+                    : 0;
                 return { team, ...s, nrr };
             });
 
@@ -522,10 +540,10 @@
             tbody.innerHTML = '';
             
             data.forEach((row, index) => {
-                let nrrDisplay = (row.nrr > 0 ? "+" : "") + row.nrr.toFixed(3);
+                let nrrDisplay = (row.nrr > 0 ? "+" : "") + (Number(row.nrr) || 0).toFixed(3);
                 if (row.p === 0) nrrDisplay = "0.000";
 
-                let logoUrl = logos[row.team] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
+                let logoUrl = logos[row.team] || defaultLogos[row.team] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
                 let logoAction = isAdmin ? `onclick="changeTeamLogo('${row.team}')" title="Click to change logo"` : "";
                 let cursorStyle = isAdmin ? "cursor-pointer" : "";
 
@@ -551,8 +569,8 @@
             const container = document.getElementById('upcomingContainer');
             container.innerHTML = '';
             
-            let playedIds = matches.map(m => m.id);
-            let remaining = upcomingMatches.filter(um => !playedIds.includes(um.id));
+            let playedIds = matches.map(m => Number(m.id));
+            let remaining = upcomingMatches.filter(um => !playedIds.includes(Number(um.id)));
 
             if (remaining.length === 0) {
                 container.innerHTML = `<div class="glass rounded-2xl p-6 text-center text-gray-400">All scheduled matches have been played!</div>`;
@@ -565,8 +583,8 @@
                 
                 let t1Key = Object.keys(logos).find(k => k.toUpperCase() === um.t1.toUpperCase()) || um.t1;
                 let t2Key = Object.keys(logos).find(k => k.toUpperCase() === um.t2.toUpperCase()) || um.t2;
-                let l1 = logos[t1Key] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
-                let l2 = logos[t2Key] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
+                let l1 = logos[t1Key] || defaultLogos[t1Key] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
+                let l2 = logos[t2Key] || defaultLogos[t2Key] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
 
                 div.innerHTML = `
                     <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
@@ -597,7 +615,7 @@
             const container = document.getElementById('matchesContainer');
             container.innerHTML = '';
             
-            let sortedMatches = [...matches].sort((a, b) => b.id - a.id);
+            let sortedMatches = [...matches].filter(m => m && m.id).sort((a, b) => Number(b.id) - Number(a.id));
 
             if (currentTeamFilter) {
                 sortedMatches = sortedMatches.filter(m => m.t1 === currentTeamFilter || m.t2 === currentTeamFilter);
@@ -607,14 +625,19 @@
                 document.getElementById('filterBanner').classList.add('hide');
             }
 
+            if (sortedMatches.length === 0) {
+                container.innerHTML = `<div class="glass rounded-2xl p-6 text-center text-gray-400">No played matches to display.</div>`;
+                return;
+            }
+
             sortedMatches.forEach(m => {
                 let div = document.createElement('div');
                 div.className = "glass rounded-2xl p-4 md:p-6 relative";
                 
                 let deleteBtn = isAdmin ? `<button onclick="deleteMatch(${m.id})" class="absolute top-4 right-4 text-red-500 hover:text-red-400 transition-colors"><i class="fas fa-trash-alt"></i></button>` : '';
 
-                let logo1 = logos[m.t1] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
-                let logo2 = logos[m.t2] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
+                let logo1 = logos[m.t1] || defaultLogos[m.t1] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
+                let logo2 = logos[m.t2] || defaultLogos[m.t2] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
 
                 div.innerHTML = `
                     <div class="flex justify-between items-center mb-4">
@@ -646,7 +669,6 @@
             });
         }
 
-        // 4. Render Top Performers Grouped by Match
         function renderPlayerStats() {
             const container = document.getElementById('playerStatsContainer');
             container.innerHTML = '';
@@ -671,7 +693,7 @@
             const matchKeys = Object.keys(grouped).sort((a, b) => parseInt(b) - parseInt(a));
 
             matchKeys.forEach(mKey => {
-                const matchObj = matches.find(m => m.id == mKey);
+                const matchObj = matches.find(m => Number(m.id) === Number(mKey));
                 let matchHeaderSub = matchObj ? `${matchObj.t1} vs ${matchObj.t2} (${matchObj.win} won)` : `Match #${mKey}`;
 
                 let matchSection = document.createElement('div');
@@ -733,7 +755,6 @@
             });
         }
 
-        // Add Match Performer to Firebase
         function addPlayerStat() {
             const matchNum = parseInt(document.getElementById('statMatchNum').value);
             const name = document.getElementById('statPlayerName').value.trim();
@@ -807,7 +828,8 @@
                 return;
             }
 
-            db.ref(`tournament/matches/${m.id}`).set(m)
+            // Using key prefix 'm_' avoids Firebase sparse array indexing issues
+            matchesRef.child(`m_${m.id}`).set(m)
                 .then(() => {
                     document.querySelectorAll('#adminPanel input').forEach(i => i.value = '');
                     currentTeamFilter = null; 
@@ -818,10 +840,16 @@
 
         function deleteMatch(id) {
             if (confirm(`Are you sure you want to delete Match ${id}?`)) {
-                db.ref(`tournament/matches/${id}`).remove()
+                matchesRef.child(`m_${id}`).remove()
+                    .then(() => matchesRef.child(`${id}`).remove())
                     .catch(err => alert("Error deleting match: " + err.message));
             }
         }
+
+        // Initial render on local load
+        calculateStandings();
+        renderMatches();
+        renderUpcoming();
     </script>
 </body>
 </html>
