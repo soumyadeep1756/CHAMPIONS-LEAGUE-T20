@@ -273,21 +273,21 @@
             { id: 11, date: "Nov 3 (Tue)", t1: "KKR", t2: "Melbourne Stars", pitch: "Green Pitch", venue: "Wankhede" },
             { id: 12, date: "Nov 4 (Wed)", t1: "Sydney Sixers", t2: "RCB", pitch: "Green Pitch", venue: "Lord's" },
             { id: 13, date: "Nov 5 (Thu)", t1: "KKR", t2: "CSK", pitch: "Green Pitch", venue: "Cape Town" },
-            { id: 14, date: "Nov 6 (Fri)", t1: "RCB", t2: "Perth Scorchers", pitch: "Dry Pitch", venue: "Wellington" },
-            { id: 15, date: "Nov 7 (Sat)", t1: "Karachi Kings", t2: "Paarl Royals", pitch: "Green Pitch", venue: "Melbourne" },
-            { id: 16, date: "Nov 7 (Sat)", t1: "Sydney Sixers", t2: "Melbourne Stars", pitch: "Dry Pitch", venue: "Wankhede" },
-            { id: 17, date: "Nov 8 (Sun)", t1: "KKR", t2: "RCB", pitch: "Dry Pitch", venue: "Cape Town" },
-            { id: 18, date: "Nov 8 (Sun)", t1: "Perth Scorchers", t2: "CSK", pitch: "Green Pitch", venue: "Lord's" },
-            { id: 19, date: "Nov 9 (Mon)", t1: "Karachi Kings", t2: "Melbourne Stars", pitch: "Green Pitch", venue: "Wellington" },
-            { id: 20, date: "Nov 10 (Tue)", t1: "Paarl Royals", t2: "CSK", pitch: "Dry Pitch", venue: "Melbourne" },
-            { id: 21, date: "Nov 11 (Wed)", t1: "Sydney Sixers", t2: "KKR", pitch: "Green Pitch", venue: "Wankhede" },
-            { id: 22, date: "Nov 12 (Thu)", t1: "Melbourne Stars", t2: "Perth Scorchers", pitch: "Dry Pitch", venue: "Cape Town" },
-            { id: 23, date: "Nov 13 (Fri)", t1: "RCB", t2: "CSK", pitch: "Dry Pitch", venue: "Lord's" },
-            { id: 24, date: "Nov 14 (Sat)", t1: "Sydney Sixers", t2: "Paarl Royals", pitch: "Dry Pitch", venue: "Wellington" },
-            { id: 25, date: "Nov 14 (Sat)", t1: "KKR", t2: "Perth Scorchers", pitch: "Green Pitch", venue: "Melbourne" },
-            { id: 26, date: "Nov 15 (Sun)", t1: "Karachi Kings", t2: "RCB", pitch: "Green Pitch", venue: "Cape Town" },
-            { id: 27, date: "Nov 15 (Sun)", t1: "Melbourne Stars", t2: "CSK", pitch: "Dry Pitch", venue: "Wankhede" },
-            { id: 28, date: "Nov 16 (Mon)", t1: "Perth Scorchers", t2: "Sydney Sixers", pitch: "Green Pitch", venue: "Lord's" }
+            { id: 14, date: "Nov 10 (Tue)", t1: "RCB", t2: "Perth Scorchers", pitch: "Dry Pitch", venue: "Wellington" },
+            { id: 15, date: "Nov 11 (Wed)", t1: "Karachi Kings", t2: "Paarl Royals", pitch: "Green Pitch", venue: "Melbourne" },
+            { id: 16, date: "Nov 12 (Thu)", t1: "Sydney Sixers", t2: "Melbourne Stars", pitch: "Dry Pitch", venue: "Wankhede" },
+            { id: 17, date: "Nov 13 (Fri)", t1: "KKR", t2: "RCB", pitch: "Dry Pitch", venue: "Cape Town" },
+            { id: 18, date: "Nov 14 (Sat)", t1: "Perth Scorchers", t2: "CSK", pitch: "Green Pitch", venue: "Lord's" },
+            { id: 19, date: "Nov 14 (Sat)", t1: "Karachi Kings", t2: "Melbourne Stars", pitch: "Green Pitch", venue: "Wellington" },
+            { id: 20, date: "Nov 15 (Sun)", t1: "Paarl Royals", t2: "CSK", pitch: "Dry Pitch", venue: "Melbourne" },
+            { id: 21, date: "Nov 15 (Sun)", t1: "Sydney Sixers", t2: "KKR", pitch: "Green Pitch", venue: "Wankhede" },
+            { id: 22, date: "Nov 16 (Mon)", t1: "Melbourne Stars", t2: "Perth Scorchers", pitch: "Dry Pitch", venue: "Cape Town" },
+            { id: 23, date: "Nov 17 (Tue)", t1: "RCB", t2: "CSK", pitch: "Dry Pitch", venue: "Lord's" },
+            { id: 24, date: "Nov 18 (Wed)", t1: "Sydney Sixers", t2: "Paarl Royals", pitch: "Dry Pitch", venue: "Wellington" },
+            { id: 25, date: "Nov 19 (Thu)", t1: "KKR", t2: "Perth Scorchers", pitch: "Green Pitch", venue: "Melbourne" },
+            { id: 26, date: "Nov 20 (Fri)", t1: "Karachi Kings", t2: "RCB", pitch: "Green Pitch", venue: "Cape Town" },
+            { id: 27, date: "Nov 21 (Sat)", t1: "Melbourne Stars", t2: "CSK", pitch: "Dry Pitch", venue: "Wankhede" },
+            { id: 28, date: "Nov 21 (Sat)", t1: "Perth Scorchers", t2: "Sydney Sixers", pitch: "Green Pitch", venue: "Lord's" }
         ];
 
         let matches = [...initialMatches];
@@ -302,15 +302,12 @@
         const logosRef = db.ref('tournament/logos');
         const statsRef = db.ref('tournament/playerStats');
 
-        // Merges incoming Firebase items and ensures any missing default matches (like Match 1) are retained
         function mergeAndSanitizeMatches(firebaseData) {
             let map = {};
-            // 1. Seed defaults first
             initialMatches.forEach(m => {
                 map[m.id] = m;
             });
 
-            // 2. Overlay any database records
             if (firebaseData) {
                 let items = Array.isArray(firebaseData) ? firebaseData : Object.values(firebaseData);
                 items.forEach(m => {
@@ -358,7 +355,6 @@
             renderPlayerStats();
         });
 
-        // Push all initial matches straight into Firebase
         function forceSyncAllInitialMatches() {
             if (!confirm("This will ensure all 9 default matches (including Match 1) are permanently saved in Firebase cloud. Proceed?")) return;
             const updates = {};
