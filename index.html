@@ -29,6 +29,11 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         .hide { display: none !important; }
+        
+        /* Custom scrollbar for squad list */
+        .squad-scroll::-webkit-scrollbar { width: 6px; }
+        .squad-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        .squad-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
     </style>
 </head>
 <body class="pb-12">
@@ -83,7 +88,7 @@
 
         <!-- 1. STANDINGS VIEW -->
         <div id="view-standings" class="glass rounded-2xl p-6 shadow-xl">
-            <p class="text-xs text-gray-400 text-center mb-4"><i class="fas fa-info-circle"></i> <span id="adminLogoTip">Tap logo to update (Admin)</span> | Tap team name to filter matches</p>
+            <p class="text-xs text-gray-400 text-center mb-4"><i class="fas fa-info-circle"></i> Tap a team name to view Squads & Form Guide</p>
             <table class="w-full text-left border-collapse">
                 <thead>
                     <tr class="border-b border-white/20 text-gray-300 text-sm">
@@ -116,7 +121,7 @@
                     </button>
                 </div>
                 <div class="grid grid-cols-2 gap-4">
-                    <input type="number" id="mNum" placeholder="Match Number (e.g. 1)" class="bg-black/50 border border-white/20 rounded p-2.5 text-white">
+                    <input type="number" id="mNum" placeholder="Match Number (e.g. 11)" class="bg-black/50 border border-white/20 rounded p-2.5 text-white">
                     <input type="text" id="winTeam" placeholder="Winning Team Name (UPPERCASE)" class="bg-black/50 border border-white/20 rounded p-2.5 text-white">
                     
                     <div class="p-4 border border-white/10 rounded-xl bg-black/20">
@@ -231,6 +236,50 @@
 
     </div>
 
+    <!-- TEAM SQUAD & INFO MODAL -->
+    <div id="squadModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center hide px-4">
+        <div class="glass w-full max-w-lg rounded-2xl border border-white/20 shadow-2xl overflow-hidden flex flex-col relative">
+            
+            <button onclick="closeTeamModal()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-red-500 transition-colors text-white">
+                <i class="fas fa-times"></i>
+            </button>
+
+            <!-- Modal Header -->
+            <div class="bg-gradient-to-b from-blue-900/60 to-transparent p-6 flex flex-col items-center border-b border-white/10">
+                <img id="modalTeamLogo" src="" class="w-24 h-24 object-contain bg-white rounded-full p-2 mb-4 shadow-lg border-2 border-white/20">
+                <h2 id="modalTeamName" class="text-2xl font-bold text-white tracking-wide">TEAM NAME</h2>
+            </div>
+            
+            <!-- Modal Body -->
+            <div class="p-6 space-y-5">
+                
+                <!-- Form Guide -->
+                <div>
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2"><i class="fas fa-chart-line mr-2"></i>Form Guide (Last 5)</h4>
+                    <div id="modalTeamForm" class="flex gap-2"></div>
+                </div>
+
+                <!-- Squad List -->
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest"><i class="fas fa-users mr-2"></i>Playing Squad</h4>
+                        <div id="modalAdminArea"></div>
+                    </div>
+                    <div id="modalTeamSquad" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto squad-scroll pr-2">
+                        <!-- Badges inject here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-4 border-t border-white/10 bg-black/20">
+                <button id="modalViewMatchesBtn" class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold transition-all flex justify-center items-center gap-2">
+                    <i class="fas fa-bolt text-yellow-400"></i> View All Team Matches
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const firebaseConfig = {
             apiKey: "AIzaSyCHai8Sgu6ZjmtfkcqN7UJNkvc8rbj5aiQ",
@@ -293,6 +342,7 @@
         let matches = [...initialMatches];
         let logos = { ...defaultLogos };
         let playerStats = [];
+        let squads = {};
         let isAdmin = false;
         let currentTeamFilter = null;
         let selectedPlayerImageBase64 = "";
@@ -301,19 +351,15 @@
         const matchesRef = db.ref('tournament/matches');
         const logosRef = db.ref('tournament/logos');
         const statsRef = db.ref('tournament/playerStats');
+        const squadsRef = db.ref('tournament/squads');
 
         function mergeAndSanitizeMatches(firebaseData) {
             let map = {};
-            initialMatches.forEach(m => {
-                map[m.id] = m;
-            });
-
+            initialMatches.forEach(m => { map[m.id] = m; });
             if (firebaseData) {
                 let items = Array.isArray(firebaseData) ? firebaseData : Object.values(firebaseData);
                 items.forEach(m => {
-                    if (m && typeof m === 'object' && m.id) {
-                        map[m.id] = m;
-                    }
+                    if (m && typeof m === 'object' && m.id) { map[m.id] = m; }
                 });
             }
             return Object.values(map);
@@ -323,9 +369,6 @@
             const data = snapshot.val();
             if (data && typeof data === 'object') {
                 logos = { ...defaultLogos, ...data };
-            } else {
-                logosRef.set(defaultLogos);
-                logos = { ...defaultLogos };
             }
             calculateStandings();
             renderMatches();
@@ -345,22 +388,21 @@
         statsRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data && typeof data === 'object') {
-                playerStats = Object.keys(data).map(key => ({
-                    _fbKey: key,
-                    ...data[key]
-                }));
+                playerStats = Object.keys(data).map(key => ({ _fbKey: key, ...data[key] }));
             } else {
                 playerStats = [];
             }
             renderPlayerStats();
         });
 
+        squadsRef.on('value', (snapshot) => {
+            squads = snapshot.val() || {};
+        });
+
         function forceSyncAllInitialMatches() {
             if (!confirm("This will ensure all 9 default matches (including Match 1) are permanently saved in Firebase cloud. Proceed?")) return;
             const updates = {};
-            initialMatches.forEach(m => {
-                updates[`m_${m.id}`] = m;
-            });
+            initialMatches.forEach(m => { updates[`m_${m.id}`] = m; });
             matchesRef.update(updates)
                 .then(() => alert("Default matches successfully verified and synced to Firebase!"))
                 .catch(err => alert("Error syncing: " + err.message));
@@ -420,8 +462,55 @@
             let newUrl = prompt(`Enter new image URL for ${teamName}:`, logos[teamName] || "");
             if (newUrl !== null && newUrl.trim() !== "") {
                 logosRef.child(teamName).set(newUrl.trim())
-                    .then(() => alert(`Logo for ${teamName} updated globally!`))
-                    .catch(err => alert("Error saving: " + err.message));
+                    .then(() => alert(`Logo for ${teamName} updated globally!`));
+            }
+        }
+
+        // Squad Modal Functions
+        function openTeamModal(team) {
+            // Sort to get form guide
+            let teamMatches = matches.filter(m => m.t1 === team || m.t2 === team).sort((a,b) => Number(b.id) - Number(a.id));
+            let formHtml = '';
+            
+            if (teamMatches.length === 0) {
+                formHtml = `<span class="text-xs text-gray-400">No matches played</span>`;
+            } else {
+                formHtml = teamMatches.slice(0, 5).map(m => {
+                    let won = (m.win === team);
+                    return `<span class="${won ? 'bg-green-500' : 'bg-red-500'} text-white text-[11px] font-bold px-2 py-0.5 rounded shadow">${won ? 'W' : 'L'}</span>`;
+                }).join(' ');
+            }
+
+            let squadList = squads[team] || [];
+            let squadHtml = squadList.length > 0 
+                ? squadList.map(p => `<span class="bg-white/10 border border-white/5 px-2.5 py-1 rounded-md text-sm font-semibold">${p}</span>`).join(' ')
+                : `<span class="text-gray-400 text-sm">Squad not announced yet.</span>`;
+
+            let adminBtn = isAdmin ? `<button onclick="editSquad('${team}')" class="text-[10px] font-bold uppercase tracking-wider bg-yellow-500 hover:bg-yellow-400 text-black px-3 py-1.5 rounded transition-colors shadow"><i class="fas fa-pen mr-1"></i> Edit Squad</button>` : '';
+
+            document.getElementById('modalTeamName').innerText = team;
+            document.getElementById('modalTeamLogo').src = logos[team] || defaultLogos[team];
+            document.getElementById('modalTeamForm').innerHTML = formHtml;
+            document.getElementById('modalTeamSquad').innerHTML = squadHtml;
+            document.getElementById('modalAdminArea').innerHTML = adminBtn;
+            
+            document.getElementById('modalViewMatchesBtn').onclick = () => { closeTeamModal(); filterMatches(team); };
+            document.getElementById('squadModal').classList.remove('hide');
+        }
+
+        function closeTeamModal() {
+            document.getElementById('squadModal').classList.add('hide');
+        }
+
+        function editSquad(team) {
+            let current = (squads[team] || []).join(', ');
+            let input = prompt(`Enter comma-separated playing squad for ${team}:`, current);
+            if (input !== null) {
+                let arr = input.split(',').map(s => s.trim()).filter(s => s);
+                squadsRef.child(team).set(arr).then(() => {
+                    squads[team] = arr;
+                    openTeamModal(team); // Refresh modal view
+                });
             }
         }
 
@@ -447,16 +536,13 @@
                             height = maxHeight;
                         }
                     }
-
                     canvas.width = width;
                     canvas.height = height;
                     const ctx = canvas.getContext('2d');
                     ctx.imageSmoothingEnabled = true;
                     ctx.imageSmoothingQuality = 'medium';
                     ctx.drawImage(img, 0, 0, width, height);
-
-                    const compressedBase64 = canvas.toDataURL('image/jpeg', quality);
-                    callback(compressedBase64);
+                    callback(canvas.toDataURL('image/jpeg', quality));
                 };
             };
         }
@@ -464,7 +550,6 @@
         function previewSelectedImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             compressImage(file, 120, 120, 0.6, function(base64Data) {
                 selectedPlayerImageBase64 = base64Data;
                 const previewImg = document.getElementById('formAvatarPreview');
@@ -484,11 +569,9 @@
         function handleDirectAvatarUpload(event) {
             const file = event.target.files[0];
             if (!file || !currentEditingFbKey) return;
-
             compressImage(file, 120, 120, 0.6, function(base64Data) {
                 statsRef.child(currentEditingFbKey).child('photo').set(base64Data)
-                    .then(() => alert("Player photo updated and saved globally!"))
-                    .catch(err => alert("Error uploading: " + err.message));
+                    .then(() => alert("Player photo updated and saved globally!"));
                 document.getElementById('avatarFileInput').value = '';
                 currentEditingFbKey = null;
             });
@@ -502,8 +585,7 @@
 
         function getMathematicalOvers(overs, wickets) {
             if (wickets >= 10) return 20.0;
-            let balls = getBalls(overs);
-            return balls / 6.0;
+            return getBalls(overs) / 6.0;
         }
 
         function calculateStandings() {
@@ -544,8 +626,7 @@
             let standingsArray = Object.keys(stats).map(team => {
                 let s = stats[team];
                 let nrr = (s.p > 0 && s.overFaced > 0 && s.overBowled > 0) 
-                    ? ((s.runScored / s.overFaced) - (s.runConceded / s.overBowled)) 
-                    : 0;
+                    ? ((s.runScored / s.overFaced) - (s.runConceded / s.overBowled)) : 0;
                 return { team, ...s, nrr };
             });
 
@@ -562,16 +643,21 @@
                 if (row.p === 0) nrrDisplay = "0.000";
 
                 let logoUrl = logos[row.team] || defaultLogos[row.team] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
-                let logoAction = isAdmin ? `onclick="changeTeamLogo('${row.team}')" title="Click to change logo"` : "";
-                let cursorStyle = isAdmin ? "cursor-pointer" : "";
-
+                
+                // Top 4 Playoff Zone styling
+                let isTop4 = index < 4;
+                let rowBgClass = isTop4 ? "border-l-4 border-l-emerald-500 bg-emerald-900/10 hover:bg-emerald-900/20" : "hover:bg-white/5";
+                let rankBadge = isTop4 ? `<span class="bg-emerald-500 text-slate-950 text-[10px] font-extrabold px-1.5 py-0.5 rounded shadow mr-2">Q</span>${index + 1}` : `${index + 1}`;
+                
                 let tr = document.createElement('tr');
-                tr.className = "border-b border-white/10 hover:bg-white/5 transition-colors";
+                tr.className = `border-b border-white/10 transition-colors ${rowBgClass}`;
                 tr.innerHTML = `
-                    <td class="p-3 font-bold">${index + 1}</td>
-                    <td class="p-3 flex items-center gap-3">
-                        <img src="${logoUrl}" ${logoAction} class="w-10 h-10 object-contain bg-white rounded-full p-1 transition-transform hover:scale-110 ${cursorStyle}">
-                        <span class="font-semibold text-base cursor-pointer hover:text-yellow-400 transition-colors" onclick="filterMatches('${row.team}')">${row.team}</span>
+                    <td class="p-3 font-bold flex items-center h-full pt-5">${rankBadge}</td>
+                    <td class="p-3">
+                        <div class="flex items-center gap-3">
+                            <img src="${logoUrl}" class="w-10 h-10 object-contain bg-white rounded-full p-1 shadow">
+                            <span class="font-semibold text-base cursor-pointer hover:text-yellow-400 transition-colors" onclick="openTeamModal('${row.team}')">${row.team}</span>
+                        </div>
                     </td>
                     <td class="p-3 text-center">${row.p}</td>
                     <td class="p-3 text-center text-green-400">${row.w}</td>
@@ -597,7 +683,7 @@
 
             remaining.forEach(um => {
                 let div = document.createElement('div');
-                div.className = "glass rounded-xl p-4 flex justify-between items-center";
+                div.className = "glass rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-colors";
                 
                 let t1Key = Object.keys(logos).find(k => k.toUpperCase() === um.t1.toUpperCase()) || um.t1;
                 let t2Key = Object.keys(logos).find(k => k.toUpperCase() === um.t2.toUpperCase()) || um.t2;
@@ -606,16 +692,16 @@
 
                 div.innerHTML = `
                     <div class="flex items-center gap-3">
-                        <span class="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-md text-xs font-bold border border-blue-500/30">MATCH ${um.id}</span>
+                        <span class="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-md text-xs font-bold border border-blue-500/30 shadow">MATCH ${um.id}</span>
                         <span class="text-xs text-gray-400"><i class="far fa-calendar-alt mr-1"></i>${um.date}</span>
                     </div>
                     <div class="flex items-center gap-5">
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 cursor-pointer hover:opacity-80" onclick="openTeamModal('${um.t1}')">
                             <img src="${l1}" class="w-6 h-6 object-contain bg-white rounded-full p-0.5">
                             <span class="font-bold text-sm">${um.t1}</span>
                         </div>
                         <span class="text-xs text-gray-500 font-bold">VS</span>
-                        <div class="flex items-center gap-2">
+                        <div class="flex items-center gap-2 cursor-pointer hover:opacity-80" onclick="openTeamModal('${um.t2}')">
                             <img src="${l2}" class="w-6 h-6 object-contain bg-white rounded-full p-0.5">
                             <span class="font-bold text-sm">${um.t2}</span>
                         </div>
@@ -627,6 +713,31 @@
                 `;
                 container.appendChild(div);
             });
+        }
+
+        // Logic to decide if won by runs or wickets
+        function getWinMarginBadge(m) {
+            let wR = Number(m.win === m.t1 ? m.t1R : m.t2R) || 0;
+            let lR = Number(m.win === m.t1 ? m.t2R : m.t1R) || 0;
+            let wW = Number(m.win === m.t1 ? m.t1W : m.t2W) || 0;
+            let wO = Number(m.win === m.t1 ? m.t1O : m.t2O) || 0;
+            let lO = Number(m.win === m.t1 ? m.t1O : m.t2O) || 0;
+
+            if (wR > lR) {
+                let diff = wR - lR;
+                if (diff > 6) {
+                    return `${m.win} WON BY ${diff} RUNS`;
+                } else {
+                    if (wW < 10 && wO < 20) {
+                        return `${m.win} WON BY ${10 - wW} WICKETS`;
+                    } else if (wO === 20 && lO === 20) {
+                        return `${m.win} WON BY ${diff} RUNS`;
+                    } else {
+                        return `${m.win} WON BY ${10 - wW} WICKETS`;
+                    }
+                }
+            }
+            return `${m.win} WON`;
         }
 
         function renderMatches() {
@@ -657,14 +768,16 @@
                 let logo1 = logos[m.t1] || defaultLogos[m.t1] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
                 let logo2 = logos[m.t2] || defaultLogos[m.t2] || "https://upload.wikimedia.org/wikipedia/commons/8/89/Placeholder.svg";
 
+                let marginText = getWinMarginBadge(m);
+
                 div.innerHTML = `
                     <div class="flex justify-between items-center mb-4">
-                        <span class="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-xs font-bold border border-blue-500/30">MATCH ${m.id}</span>
-                        <span class="bg-green-900/50 text-green-300 px-3 py-1 rounded-full text-xs font-bold border border-green-500/30">${m.win} WON</span>
+                        <span class="bg-blue-900/50 text-blue-300 px-3 py-1 rounded-full text-xs font-bold border border-blue-500/30 shadow">MATCH ${m.id}</span>
+                        <span class="bg-green-900/50 text-green-300 px-3 py-1 rounded-full text-[11px] tracking-wide font-extrabold border border-green-500/30 shadow"><i class="fas fa-check-circle mr-1 text-green-400"></i>${marginText}</span>
                         ${deleteBtn}
                     </div>
                     <div class="flex justify-between items-center">
-                        <div class="text-center w-5/12 cursor-pointer hover:opacity-80" onclick="filterMatches('${m.t1}')">
+                        <div class="text-center w-5/12 cursor-pointer hover:opacity-80" onclick="openTeamModal('${m.t1}')">
                             <img src="${logo1}" class="w-16 h-16 mx-auto mb-2 bg-white rounded-full p-1 object-contain shadow">
                             <h4 class="font-bold text-base">${m.t1}</h4>
                             <p class="text-xl font-bold mt-2">${m.t1R}/${m.t1W}</p>
@@ -675,7 +788,7 @@
                             <span class="text-gray-500 font-bold text-base">VS</span>
                         </div>
 
-                        <div class="text-center w-5/12 cursor-pointer hover:opacity-80" onclick="filterMatches('${m.t2}')">
+                        <div class="text-center w-5/12 cursor-pointer hover:opacity-80" onclick="openTeamModal('${m.t2}')">
                             <img src="${logo2}" class="w-16 h-16 mx-auto mb-2 bg-white rounded-full p-1 object-contain shadow">
                             <h4 class="font-bold text-base">${m.t2}</h4>
                             <p class="text-xl font-bold mt-2">${m.t2R}/${m.t2W}</p>
