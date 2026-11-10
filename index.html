@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <!-- BULLETPROOF DESKTOP-ON-MOBILE VIEWPORT -->
     <meta name="viewport" content="width=1024">
     <title>Champions League T20</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -45,6 +46,16 @@
             0% { transform: translate(0, 0); }
             100% { transform: translate(-100%, 0); }
         }
+
+        /* SVG Line styling for Playoff Bracket */
+        .bracket-line {
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        .line-win { stroke: rgba(234, 179, 8, 0.6); }
+        .line-lose { stroke: rgba(255, 255, 255, 0.2); }
     </style>
 </head>
 <body class="pb-12">
@@ -140,8 +151,22 @@
                 <span class="text-xs text-gray-400"><i class="fas fa-info-circle mr-1"></i> Bracket automatically updates as Admin logs Matches 29-32</span>
             </div>
             
-            <div id="playoffBracketContainer" class="grid grid-cols-3 gap-6 relative p-6 glass rounded-2xl shadow-2xl overflow-hidden min-h-[460px]">
-                <!-- Bracket lines drawn via Javascript inside renderPlayoffs() -->
+            <div id="playoffBracketContainer" class="grid grid-cols-3 gap-8 relative p-8 glass rounded-2xl shadow-2xl min-h-[480px]">
+                
+                <!-- Dynamic SVG Canvas for Bracket Lines -->
+                <svg id="bracketLines" class="absolute inset-0 w-full h-full z-0 pointer-events-none"></svg>
+
+                <div class="flex flex-col justify-between space-y-8 z-10">
+                    <div id="card-29"></div>
+                    <div id="card-30"></div>
+                </div>
+                <div class="flex flex-col justify-end z-10 pb-4">
+                    <div id="card-31"></div>
+                </div>
+                <div class="flex flex-col justify-center relative z-10">
+                    <div class="absolute -inset-8 bg-yellow-500/10 rounded-full blur-3xl z-0 animate-pulse pointer-events-none"></div>
+                    <div id="card-32"></div>
+                </div>
             </div>
         </div>
 
@@ -191,7 +216,6 @@
                                 <option value="PERTH SCORCHERS">PERTH SCORCHERS</option>
                                 <option value="SYDNEY SIXERS">SYDNEY SIXERS</option>
                                 <option value="RCB">RCB</option>
-                                <!-- Playoff Options -->
                                 <option value="RANK 1">RANK 1</option>
                                 <option value="RANK 2">RANK 2</option>
                                 <option value="RANK 3">RANK 3</option>
@@ -219,7 +243,6 @@
                                 <option value="PERTH SCORCHERS">PERTH SCORCHERS</option>
                                 <option value="SYDNEY SIXERS">SYDNEY SIXERS</option>
                                 <option value="RCB">RCB</option>
-                                <!-- Playoff Options -->
                                 <option value="RANK 2">RANK 2</option>
                                 <option value="RANK 1">RANK 1</option>
                                 <option value="RANK 4">RANK 4</option>
@@ -314,27 +337,19 @@
     <!-- FRANCHISE SQUAD & INFO MODAL -->
     <div id="squadModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center hide px-4 transition-all">
         <div id="squadModalInner" class="glass w-full max-w-lg rounded-3xl border border-white/20 overflow-hidden flex flex-col relative transition-all duration-300">
-            
             <button onclick="closeTeamModal()" class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-black/40 hover:bg-red-500 transition-colors text-white z-10">
                 <i class="fas fa-times"></i>
             </button>
-
-            <!-- Modal Header -->
             <div id="modalTeamHeaderBg" class="bg-black/50 p-6 flex flex-col items-center border-b border-white/10 relative overflow-hidden">
                 <div id="modalTeamGlow" class="absolute -inset-10 opacity-30 blur-2xl z-0 rounded-full"></div>
                 <img id="modalTeamLogo" src="" class="w-24 h-24 object-contain bg-white rounded-full p-2 mb-4 shadow-xl border-4 border-white/10 relative z-10">
                 <h2 id="modalTeamName" class="text-2xl font-black text-white tracking-widest uppercase relative z-10 drop-shadow-md">TEAM NAME</h2>
             </div>
-            
-            <!-- Modal Body -->
             <div class="p-6 space-y-6 bg-slate-900/40">
-                <!-- Recent Matches Feed -->
                 <div>
                     <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3"><i class="fas fa-history mr-2"></i>Recent Matches</h4>
                     <div id="modalTeamForm" class="space-y-3 max-h-56 overflow-y-auto squad-scroll pr-2"></div>
                 </div>
-
-                <!-- Squad List -->
                 <div>
                     <div class="flex justify-between items-center mb-2">
                         <h4 class="text-xs font-bold text-gray-400 uppercase tracking-widest"><i class="fas fa-users mr-2"></i>Playing Squad</h4>
@@ -343,8 +358,6 @@
                     <div id="modalTeamSquad" class="flex flex-wrap gap-2 max-h-32 overflow-y-auto squad-scroll pr-2"></div>
                 </div>
             </div>
-
-            <!-- Modal Footer -->
             <div class="p-4 border-t border-white/10 bg-black/60">
                 <button id="modalViewMatchesBtn" class="w-full bg-white/10 hover:bg-white/20 border border-white/20 py-3 rounded-xl font-bold transition-all flex justify-center items-center gap-2 shadow-md">
                     <i class="fas fa-search text-gray-300"></i> Filter Match History
@@ -367,7 +380,6 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Core Data
         const defaultLogos = {
             "CSK": "https://upload.wikimedia.org/wikipedia/en/2/2b/Chennai_Super_Kings_Logo.svg",
             "KKR": "https://upload.wikimedia.org/wikipedia/en/4/4c/Kolkata_Knight_Riders_Logo.svg",
@@ -417,7 +429,7 @@
             { id: 27, date: "Nov 21 (Sat)", t1: "Melbourne Stars", t2: "CSK", pitch: "Dry Pitch", venue: "Wankhede" },
             { id: 28, date: "Nov 21 (Sat)", t1: "Perth Scorchers", t2: "Sydney Sixers", pitch: "Green Pitch", venue: "Lord's" },
             
-            // PLAYOFF DATES UPDATED
+            // PLAYOFF DATES
             { id: 29, date: "Nov 21 (Sat)", t1: "Rank 1", t2: "Rank 2", pitch: "TBD", venue: "TBD" },
             { id: 30, date: "Nov 22 (Sun)", t1: "Rank 3", t2: "Rank 4", pitch: "TBD", venue: "TBD" },
             { id: 31, date: "Nov 23 (Mon)", t1: "Loser Q1", t2: "Winner Elim", pitch: "TBD", venue: "TBD" },
@@ -479,7 +491,7 @@
             renderMatches();
             renderUpcoming();
             renderPlayerStats();
-            renderPlayoffs();
+            if(!document.getElementById('view-playoffs').classList.contains('hide')) renderPlayoffs();
         });
 
         matchesRef.on('value', (snapshot) => {
@@ -488,7 +500,7 @@
             renderMatches();
             renderUpcoming();
             renderPlayerStats();
-            renderPlayoffs();
+            if(!document.getElementById('view-playoffs').classList.contains('hide')) renderPlayoffs();
         });
 
         statsRef.on('value', (snapshot) => {
@@ -515,7 +527,12 @@
             });
             document.getElementById(`view-${tab}`).classList.remove('hide');
             document.getElementById(`tab-${tab}`).classList.add('bg-blue-600/30', 'border-blue-400');
-            if(tab === 'playoffs') renderPlayoffs();
+            
+            // Special trigger for bracket drawing when tab is visible
+            if(tab === 'playoffs') {
+                renderPlayoffs();
+                setTimeout(drawBracketLines, 100);
+            }
         }
 
         function filterMatches(team) {
@@ -537,7 +554,8 @@
                 document.getElementById('logoutBtn').classList.remove('hide');
                 document.getElementById('adminPanel').classList.remove('hide');
                 document.getElementById('adminPlayerPanel').classList.remove('hide');
-                calculateStandings(); renderMatches(); renderUpcoming(); renderPlayerStats(); renderPlayoffs();
+                calculateStandings(); renderMatches(); renderUpcoming(); renderPlayerStats();
+                if(!document.getElementById('view-playoffs').classList.contains('hide')) renderPlayoffs();
             } else if (pass !== null) alert("Incorrect Password");
         }
 
@@ -547,7 +565,8 @@
             document.getElementById('loginBtn').classList.remove('hide');
             document.getElementById('adminPanel').classList.add('hide');
             document.getElementById('adminPlayerPanel').classList.add('hide');
-            calculateStandings(); renderMatches(); renderUpcoming(); renderPlayerStats(); renderPlayoffs();
+            calculateStandings(); renderMatches(); renderUpcoming(); renderPlayerStats();
+            if(!document.getElementById('view-playoffs').classList.contains('hide')) renderPlayoffs();
         }
 
         function changeTeamLogo(teamName) {
@@ -625,17 +644,27 @@
             }
         }
 
-        // Bracket rendering with SVG connector lines and TBD auto-avatars
+        // Bracket rendering with Exact Pixel SVGs and dynamic TBD Avatars
         function buildPlayoffCard(id, title) {
             let m = matches.find(x => Number(x.id) === id);
             let isPlayed = !!m;
             if (!m) m = upcomingMatches.find(x => x.id === id) || { t1: 'TBD', t2: 'TBD', date: 'TBD' };
             
-            // Dynamic TBD / Placeholder Logo Generator
+            // Logic for short-name TBD avatars
             let getLogo = (t) => {
                 if (logos[t]) return logos[t];
                 if (defaultLogos[t]) return defaultLogos[t];
-                return `https://ui-avatars.com/api/?name=${encodeURI(t)}&background=1e293b&color=94a3b8&bold=true&font-size=0.4`;
+                let shortText = t;
+                if(t.toUpperCase().includes("RANK 1")) shortText = "R1";
+                if(t.toUpperCase().includes("RANK 2")) shortText = "R2";
+                if(t.toUpperCase().includes("RANK 3")) shortText = "R3";
+                if(t.toUpperCase().includes("RANK 4")) shortText = "R4";
+                if(t.toUpperCase().includes("LOSER Q1")) shortText = "LQ";
+                if(t.toUpperCase().includes("WINNER Q1")) shortText = "WQ";
+                if(t.toUpperCase().includes("WINNER Q2")) shortText = "WQ";
+                if(t.toUpperCase().includes("WINNER ELIM")) shortText = "WE";
+                
+                return `https://ui-avatars.com/api/?name=${encodeURI(shortText)}&background=2563eb&color=ffffff&bold=true&font-size=0.45&rounded=true`;
             };
             
             let l1 = getLogo(m.t1);
@@ -651,7 +680,7 @@
             let glow = id === 32 ? "border-yellow-500 shadow-[0_0_25px_rgba(234,179,8,0.3)] bg-gradient-to-tr from-yellow-900/40 to-black/30" : "border-white/10 bg-slate-900/80";
 
             return `
-                <div class="${glow} p-4 rounded-xl border relative transition-all hover:-translate-y-1 hover:bg-white/5 z-10 w-full backdrop-blur-md">
+                <div id="card-${id}" class="${glow} p-4 rounded-xl border relative transition-all hover:-translate-y-1 hover:bg-white/5 z-10 w-full backdrop-blur-md">
                     <div class="text-[9px] font-black tracking-widest ${isPlayed ? 'text-blue-400' : 'text-white/40'} mb-3 border-b border-white/10 pb-1.5 uppercase drop-shadow-md">
                         ${title} <span class="float-right bg-black/40 px-1.5 py-0.5 rounded text-[8px] text-gray-500">M${id}</span>
                     </div>
@@ -678,32 +707,62 @@
             const container = document.getElementById('playoffBracketContainer');
             if(!container) return;
             
-            container.innerHTML = `
-                <!-- SVG Bracket Lines Overlay -->
-                <svg class="absolute inset-0 w-full h-full z-0 pointer-events-none" preserveAspectRatio="none">
-                    <!-- Q1 to Final (Winner Path) -->
-                    <path d="M 28% 25% L 45% 25% L 45% 50% L 66% 50%" stroke="rgba(234, 179, 8, 0.4)" stroke-width="2" fill="none" class="animate-pulse" />
-                    <!-- Q1 to Q2 (Loser Path) -->
-                    <path d="M 28% 25% L 37% 25% L 37% 75% L 45% 75%" stroke="rgba(255, 255, 255, 0.15)" stroke-width="2" fill="none" />
-                    <!-- Elim to Q2 -->
-                    <path d="M 28% 75% L 45% 75%" stroke="rgba(255, 255, 255, 0.15)" stroke-width="2" fill="none" />
-                    <!-- Q2 to Final -->
-                    <path d="M 60% 75% L 66% 75% L 66% 50%" stroke="rgba(234, 179, 8, 0.4)" stroke-width="2" fill="none" class="animate-pulse" />
-                </svg>
-
-                <div class="flex flex-col justify-between space-y-8 z-10 py-6">
-                    ${buildPlayoffCard(29, "Qualifier 1 (Rank 1 v 2)")}
-                    ${buildPlayoffCard(30, "Eliminator (Rank 3 v 4)")}
-                </div>
-                <div class="flex flex-col justify-end z-10 py-6">
-                    ${buildPlayoffCard(31, "Qualifier 2 (L.Q1 v W.Elim)")}
-                </div>
-                <div class="flex flex-col justify-center relative z-10 py-6">
-                    <div class="absolute -inset-8 bg-yellow-500/20 rounded-full blur-3xl z-0 animate-pulse pointer-events-none"></div>
-                    ${buildPlayoffCard(32, "<i class='fas fa-crown text-yellow-400 mr-1'></i> Grand Final")}
-                </div>
-            `;
+            document.getElementById('card-29').outerHTML = buildPlayoffCard(29, "Qualifier 1 (Rank 1 v 2)");
+            document.getElementById('card-30').outerHTML = buildPlayoffCard(30, "Eliminator (Rank 3 v 4)");
+            document.getElementById('card-31').outerHTML = buildPlayoffCard(31, "Qualifier 2 (L.Q1 v W.Elim)");
+            document.getElementById('card-32').outerHTML = buildPlayoffCard(32, "<i class='fas fa-crown text-yellow-400 mr-1'></i> Grand Final");
+            
+            drawBracketLines();
         }
+
+        // Auto-calculates exact pixel coordinates between the cards to draw SVG connector lines
+        function drawBracketLines() {
+            const svg = document.getElementById('bracketLines');
+            const container = document.getElementById('playoffBracketContainer');
+            if (!svg || !container) return;
+            
+            svg.innerHTML = ''; // clear old lines
+            
+            const contRect = container.getBoundingClientRect();
+            const getBox = (id) => {
+                let el = document.getElementById(`card-${id}`);
+                if (!el) return null;
+                let r = el.getBoundingClientRect();
+                return {
+                    right: r.right - contRect.left,
+                    left: r.left - contRect.left,
+                    top: r.top - contRect.top,
+                    bottom: r.bottom - contRect.top,
+                    cy: (r.top - contRect.top) + (r.height / 2)
+                };
+            };
+
+            let q1 = getBox(29);
+            let el = getBox(30);
+            let q2 = getBox(31);
+            let fn = getBox(32);
+
+            if (q1 && el && q2 && fn) {
+                const drawLine = (x1, y1, x2, y2, type) => {
+                    let path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    // elbow bend calculation
+                    let midX = x1 + (x2 - x1) / 2;
+                    path.setAttribute('d', `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`);
+                    path.setAttribute('class', `bracket-line ${type === 'win' ? 'line-win animate-pulse' : 'line-lose'}`);
+                    svg.appendChild(path);
+                };
+
+                // Q1 Winner to Final
+                drawLine(q1.right, q1.cy, fn.left, fn.cy - 20, 'win');
+                // Q1 Loser to Q2
+                drawLine(q1.right, q1.cy + 10, q2.left, q2.cy - 20, 'lose');
+                // Elim Winner to Q2
+                drawLine(el.right, el.cy, q2.left, q2.cy + 20, 'lose');
+                // Q2 Winner to Final
+                drawLine(q2.right, q2.cy, fn.left, fn.cy + 20, 'win');
+            }
+        }
+        window.addEventListener('resize', drawBracketLines);
 
         function compressImage(file, maxWidth, maxHeight, quality, callback) {
             const reader = new FileReader();
@@ -845,9 +904,9 @@
             remaining.forEach(um => {
                 let div = document.createElement('div');
                 div.className = "glass rounded-xl p-4 flex justify-between items-center hover:bg-white/5 transition-colors";
+                
                 let t1Key = Object.keys(logos).find(k => k.toUpperCase() === um.t1.toUpperCase()) || um.t1;
                 let t2Key = Object.keys(logos).find(k => k.toUpperCase() === um.t2.toUpperCase()) || um.t2;
-                
                 let l1 = logos[t1Key] || defaultLogos[t1Key] || `https://ui-avatars.com/api/?name=${encodeURI(um.t1)}&background=1e293b&color=94a3b8`;
                 let l2 = logos[t2Key] || defaultLogos[t2Key] || `https://ui-avatars.com/api/?name=${encodeURI(um.t2)}&background=1e293b&color=94a3b8`;
 
@@ -938,7 +997,11 @@
                             <p class="text-xl font-bold mt-2">${m.t1R}/${m.t1W}</p>
                             <p class="text-xs text-gray-400">(${m.t1O} ov)</p>
                         </div>
-                        <div class="w-2/12 text-center"><span class="text-gray-500 font-bold text-base">VS</span></div>
+                        
+                        <div class="w-2/12 text-center">
+                            <span class="text-gray-500 font-bold text-base">VS</span>
+                        </div>
+
                         <div class="text-center w-5/12 cursor-pointer hover:opacity-80" onclick="openTeamModal('${m.t2}')">
                             <img src="${logo2}" class="w-16 h-16 mx-auto mb-2 bg-white rounded-full p-1 object-contain shadow">
                             <h4 class="font-bold text-base">${m.t2}</h4>
@@ -1060,7 +1123,6 @@
         calculateStandings();
         renderMatches();
         renderUpcoming();
-        renderPlayoffs();
     </script>
 </body>
 </html>
