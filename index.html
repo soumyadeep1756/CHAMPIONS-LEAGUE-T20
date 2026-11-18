@@ -151,7 +151,7 @@
                 <span class="text-xs text-gray-400"><i class="fas fa-info-circle mr-1"></i> Bracket automatically updates as Admin logs Matches 29-32</span>
             </div>
             
-            <div id="playoffBracketContainer" class="grid grid-cols-3 gap-8 relative p-8 glass rounded-2xl shadow-2xl min-h-[480px]">
+            <div id="playoffBracketContainer" class="grid grid-cols-3 gap-6 relative p-6 glass rounded-2xl shadow-2xl overflow-hidden min-h-[480px]">
                 
                 <!-- Dynamic SVG Canvas for Bracket Lines -->
                 <svg id="bracketLines" class="absolute inset-0 w-full h-full z-0 pointer-events-none"></svg>
@@ -176,7 +176,7 @@
             <div id="upcomingContainer" class="space-y-3"></div>
         </div>
 
-        <!-- 4. PLAYED MATCHES VIEW -->
+        <!-- 4. PLAYED MATCHES VIEW (With Admin Panel) -->
         <div id="view-matches" class="hide space-y-6">
             
             <div id="adminPanel" class="hide">
@@ -380,6 +380,7 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
+        // Core Data
         const defaultLogos = {
             "CSK": "https://upload.wikimedia.org/wikipedia/en/2/2b/Chennai_Super_Kings_Logo.svg",
             "KKR": "https://upload.wikimedia.org/wikipedia/en/4/4c/Kolkata_Knight_Riders_Logo.svg",
@@ -528,7 +529,6 @@
             document.getElementById(`view-${tab}`).classList.remove('hide');
             document.getElementById(`tab-${tab}`).classList.add('bg-blue-600/30', 'border-blue-400');
             
-            // Special trigger for bracket drawing when tab is visible
             if(tab === 'playoffs') {
                 renderPlayoffs();
                 setTimeout(drawBracketLines, 100);
@@ -644,13 +644,11 @@
             }
         }
 
-        // Bracket rendering with Exact Pixel SVGs and dynamic TBD Avatars
         function buildPlayoffCard(id, title) {
             let m = matches.find(x => Number(x.id) === id);
             let isPlayed = !!m;
             if (!m) m = upcomingMatches.find(x => x.id === id) || { t1: 'TBD', t2: 'TBD', date: 'TBD' };
             
-            // Logic for short-name TBD avatars
             let getLogo = (t) => {
                 if (logos[t]) return logos[t];
                 if (defaultLogos[t]) return defaultLogos[t];
@@ -663,7 +661,6 @@
                 if(t.toUpperCase().includes("WINNER Q1")) shortText = "WQ";
                 if(t.toUpperCase().includes("WINNER Q2")) shortText = "WQ";
                 if(t.toUpperCase().includes("WINNER ELIM")) shortText = "WE";
-                
                 return `https://ui-avatars.com/api/?name=${encodeURI(shortText)}&background=2563eb&color=ffffff&bold=true&font-size=0.45&rounded=true`;
             };
             
@@ -715,13 +712,12 @@
             drawBracketLines();
         }
 
-        // Auto-calculates exact pixel coordinates between the cards to draw SVG connector lines
         function drawBracketLines() {
             const svg = document.getElementById('bracketLines');
             const container = document.getElementById('playoffBracketContainer');
             if (!svg || !container) return;
             
-            svg.innerHTML = ''; // clear old lines
+            svg.innerHTML = ''; 
             
             const contRect = container.getBoundingClientRect();
             const getBox = (id) => {
@@ -745,20 +741,14 @@
             if (q1 && el && q2 && fn) {
                 const drawLine = (x1, y1, x2, y2, type) => {
                     let path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-                    // elbow bend calculation
                     let midX = x1 + (x2 - x1) / 2;
                     path.setAttribute('d', `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`);
                     path.setAttribute('class', `bracket-line ${type === 'win' ? 'line-win animate-pulse' : 'line-lose'}`);
                     svg.appendChild(path);
                 };
-
-                // Q1 Winner to Final
                 drawLine(q1.right, q1.cy, fn.left, fn.cy - 20, 'win');
-                // Q1 Loser to Q2
                 drawLine(q1.right, q1.cy + 10, q2.left, q2.cy - 20, 'lose');
-                // Elim Winner to Q2
                 drawLine(el.right, el.cy, q2.left, q2.cy + 20, 'lose');
-                // Q2 Winner to Final
                 drawLine(q2.right, q2.cy, fn.left, fn.cy + 20, 'win');
             }
         }
@@ -814,36 +804,37 @@
             });
         }
 
-        function getBalls(overs) {
-            let fullOvers = Math.floor(overs || 0);
-            let extraBalls = Math.round(((overs || 0) - fullOvers) * 10);
-            return (fullOvers * 6) + extraBalls;
-        }
-
-        function getMathematicalOvers(overs, wickets) {
-            if (wickets >= 10) return 20.0;
-            return getBalls(overs) / 6.0;
-        }
-
+        // ICC Correct NRR Mathematical Base functions (Raw Balls)
         function calculateStandings() {
             let stats = {};
             Object.keys(defaultLogos).forEach(team => {
-                stats[team] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, overFaced: 0, runConceded: 0, overBowled: 0 };
+                stats[team] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, ballsFaced: 0, runConceded: 0, ballsBowled: 0 };
             });
+
+            function getInningsBalls(overs, wickets) {
+                if (wickets >= 10) return 120; // 20 overs * 6 balls
+                let fullOvers = Math.floor(overs || 0);
+                let extraBalls = Math.round(((overs || 0) - fullOvers) * 10);
+                return (fullOvers * 6) + extraBalls;
+            }
 
             matches.filter(m => m.id <= 28).forEach(m => {
                 if (!m || !m.t1 || !m.t2) return;
-                if (!stats[m.t1]) stats[m.t1] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, overFaced: 0, runConceded: 0, overBowled: 0 };
-                if (!stats[m.t2]) stats[m.t2] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, overFaced: 0, runConceded: 0, overBowled: 0 };
+                if (!stats[m.t1]) stats[m.t1] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, ballsFaced: 0, runConceded: 0, ballsBowled: 0 };
+                if (!stats[m.t2]) stats[m.t2] = { p: 0, w: 0, l: 0, pts: 0, runScored: 0, ballsFaced: 0, runConceded: 0, ballsBowled: 0 };
 
                 const m1R = Number(m.t1R) || 0; const m2R = Number(m.t2R) || 0;
                 const m1W = Number(m.t1W) || 0; const m2W = Number(m.t2W) || 0;
                 const m1O = Number(m.t1O) || 0; const m2O = Number(m.t2O) || 0;
 
-                stats[m.t1].p++; stats[m.t1].runScored += m1R; stats[m.t1].overFaced += getMathematicalOvers(m1O, m1W);
-                stats[m.t1].runConceded += m2R; stats[m.t1].overBowled += getMathematicalOvers(m2O, m2W);
-                stats[m.t2].p++; stats[m.t2].runScored += m2R; stats[m.t2].overFaced += getMathematicalOvers(m2O, m2W);
-                stats[m.t2].runConceded += m1R; stats[m.t2].overBowled += getMathematicalOvers(m1O, m1W);
+                const t1Balls = getInningsBalls(m1O, m1W);
+                const t2Balls = getInningsBalls(m2O, m2W);
+
+                stats[m.t1].p++; stats[m.t1].runScored += m1R; stats[m.t1].ballsFaced += t1Balls;
+                stats[m.t1].runConceded += m2R; stats[m.t1].ballsBowled += t2Balls;
+                
+                stats[m.t2].p++; stats[m.t2].runScored += m2R; stats[m.t2].ballsFaced += t2Balls;
+                stats[m.t2].runConceded += m1R; stats[m.t2].ballsBowled += t1Balls;
 
                 if (m.win === m.t1) { stats[m.t1].w++; stats[m.t1].pts += 2; stats[m.t2].l++; }
                 else if (m.win === m.t2) { stats[m.t2].w++; stats[m.t2].pts += 2; stats[m.t1].l++; }
@@ -851,7 +842,11 @@
 
             let standingsArray = Object.keys(stats).map(team => {
                 let s = stats[team];
-                let nrr = (s.p > 0 && s.overFaced > 0 && s.overBowled > 0) ? ((s.runScored / s.overFaced) - (s.runConceded / s.overBowled)) : 0;
+                let totalOversFaced = s.ballsFaced / 6.0;
+                let totalOversBowled = s.ballsBowled / 6.0;
+                let nrr = (s.p > 0 && totalOversFaced > 0 && totalOversBowled > 0) 
+                    ? ((s.runScored / totalOversFaced) - (s.runConceded / totalOversBowled)) 
+                    : 0;
                 return { team, ...s, nrr };
             });
 
